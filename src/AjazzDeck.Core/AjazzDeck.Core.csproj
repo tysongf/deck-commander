@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>AjazzDeck.Core</RootNamespace>
+    <AssemblyName>AjazzDeck.Core</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AjazzDeck\AjazzDeck.csproj" />
+  </ItemGroup>
+</Project>

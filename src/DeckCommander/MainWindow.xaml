@@ -1,0 +1,189 @@
+﻿<Window x:Class="DeckCommander.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Deck Commander" Height="860" Width="1360"
+        MinHeight="680" MinWidth="1120" Icon="app.ico"
+        Background="{StaticResource Bg}"
+        TextOptions.TextFormattingMode="Display">
+
+  <DockPanel>
+
+    <!-- toolbar -->
+    <Border DockPanel.Dock="Top" Background="{StaticResource Panel}"
+            BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="10,8">
+      <DockPanel>
+        <StackPanel Orientation="Horizontal">
+          <Button Content="New"     Click="New_Click"/>
+          <Button Content="Open..." Click="Open_Click"/>
+          <Button Content="Save"    Click="Save_Click"/>
+          <Button Content="Save As..." Click="SaveAs_Click"/>
+          <Rectangle Width="1" Fill="{StaticResource Line}" Margin="8,2"/>
+          <Button x:Name="ConnectBtn" Content="Connect deck" Click="Connect_Click"/>
+          <Rectangle Width="1" Fill="{StaticResource Line}" Margin="8,2"/>
+          <CheckBox x:Name="ReserveNavBox" Content="Reserve right column for page controls"
+                    Click="ReserveNav_Changed"
+                    ToolTip="Off: all 15 keys are usable and pages are changed here instead."/>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
+          <TextBlock Text="Screen Brightness" VerticalAlignment="Center" Margin="0,0,12,0"
+                     FontSize="14" Foreground="{StaticResource FgDim}"/>
+          <Slider x:Name="BrightnessSlider" Width="190" Minimum="5" Maximum="100" Value="60"
+                  VerticalAlignment="Center" IsSnapToTickEnabled="True" TickFrequency="5"
+                  ValueChanged="Brightness_Changed"/>
+          <TextBlock x:Name="BrightnessText" Text="60" Width="38" TextAlignment="Right"
+                     FontSize="15" FontWeight="SemiBold"
+                     VerticalAlignment="Center" Margin="10,0,0,0"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <!-- status bar -->
+    <Border DockPanel.Dock="Bottom" Background="{StaticResource Panel}"
+            BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="10,5">
+      <TextBlock x:Name="StatusText" Text="Not connected." FontSize="13"
+                 Foreground="{StaticResource FgDim}"/>
+    </Border>
+
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="270"/>
+        <ColumnDefinition Width="*"/>
+        <ColumnDefinition Width="380"/>
+      </Grid.ColumnDefinitions>
+
+      <!-- pages -->
+      <Border Grid.Column="0" Background="{StaticResource Panel}"
+              BorderBrush="{StaticResource Line}" BorderThickness="0,0,1,0" Padding="10">
+        <DockPanel>
+          <TextBlock DockPanel.Dock="Top" Text="PAGES" FontWeight="Bold" FontSize="13"
+                     Foreground="{StaticResource FgDim}" Margin="0,0,0,10"/>
+          <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <Button Content="New Page" Click="AddPage_Click" Margin="0,0,0,6"
+                    HorizontalContentAlignment="Center"/>
+            <Button Content="Duplicate Page" Click="DuplicatePage_Click" Margin="0,0,0,6"/>
+            <Button Content="Delete Page" Click="DeletePage_Click" Margin="0,0,0,10"/>
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <Button Grid.Column="0" Content="Move Up" Click="PageUp_Click" Margin="0,0,4,0"/>
+              <Button Grid.Column="1" Content="Move Down" Click="PageDown_Click" Margin="0"/>
+            </Grid>
+            <TextBlock Text="PAGE NAME" Style="{StaticResource Caption}"/>
+            <TextBox x:Name="PageNameBox" TextChanged="PageName_Changed"/>
+          </StackPanel>
+          <ListBox x:Name="PageList" SelectionChanged="PageList_Changed"
+                   DisplayMemberPath="Name" Background="Transparent" BorderThickness="0"/>
+        </DockPanel>
+      </Border>
+
+      <!-- deck preview -->
+      <Grid Grid.Column="1">
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+          <TextBlock x:Name="GridHint" Text="Click a key to edit it." FontSize="14"
+                     Foreground="{StaticResource FgDim}" HorizontalAlignment="Center" Margin="0,0,0,18"/>
+          <Border Background="#0A0B0F" CornerRadius="14" Padding="14"
+                  BorderBrush="{StaticResource Line}" BorderThickness="1">
+            <ItemsControl x:Name="KeyGrid">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Rows="3" Columns="5"/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border x:Name="tile" Width="112" Height="112" Margin="6" CornerRadius="9"
+                          Background="#05060A" BorderBrush="#242938" BorderThickness="2"
+                          Tag="{Binding GridIndex}" Cursor="Hand"
+                          MouseLeftButtonDown="Tile_Click">
+                    <Grid>
+                      <Image Source="{Binding Image}" Stretch="Uniform" Margin="5"
+                             RenderOptions.BitmapScalingMode="HighQuality"/>
+                      <Border x:Name="navBadge" Visibility="Collapsed" Background="#AA000000"
+                              VerticalAlignment="Bottom" CornerRadius="0,0,7,7" Padding="0,2">
+                        <TextBlock Text="RESERVED" FontSize="9" TextAlignment="Center"
+                                   Foreground="#8FA0C0"/>
+                      </Border>
+                    </Grid>
+                  </Border>
+                  <DataTemplate.Triggers>
+                    <DataTrigger Binding="{Binding IsNav}" Value="True">
+                      <Setter TargetName="navBadge" Property="Visibility" Value="Visible"/>
+                      <Setter TargetName="tile" Property="Opacity" Value="0.75"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                      <Setter TargetName="tile" Property="BorderBrush" Value="#5AA0FF"/>
+                    </DataTrigger>
+                  </DataTemplate.Triggers>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Border>
+        </StackPanel>
+      </Grid>
+
+      <!-- inspector -->
+      <Border Grid.Column="2" Background="{StaticResource Panel}"
+              BorderBrush="{StaticResource Line}" BorderThickness="1,0,0,0" Padding="12">
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+          <StackPanel x:Name="Inspector">
+            <TextBlock x:Name="KeyTitle" Text="No key selected" FontWeight="Bold" FontSize="16"/>
+            <TextBlock x:Name="KeyHint" Text="Select a key in the grid."
+                       Foreground="{StaticResource FgDim}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+
+            <StackPanel x:Name="KeyFields" IsEnabled="False">
+              <TextBlock Text="LABEL" Style="{StaticResource Caption}"/>
+              <TextBox x:Name="LabelBox" TextChanged="Field_Changed"/>
+
+              <TextBlock Text="PLACEHOLDER GLYPH" Style="{StaticResource Caption}"/>
+              <ComboBox x:Name="GlyphBox" SelectionChanged="Field_Changed"/>
+
+              <TextBlock Text="BACKGROUND" Style="{StaticResource Caption}"/>
+              <DockPanel>
+                <Border x:Name="ColourSwatch" DockPanel.Dock="Right" Width="30" Height="26"
+                        CornerRadius="4" BorderBrush="{StaticResource Line}" BorderThickness="1"
+                        Margin="6,0,0,0"/>
+                <TextBox x:Name="ColourBox" TextChanged="Field_Changed"/>
+              </DockPanel>
+              <ItemsControl x:Name="Swatches" Margin="0,6,0,0">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+
+              <TextBlock Text="IMAGE FILE (OPTIONAL)" Style="{StaticResource Caption}"/>
+              <TextBox x:Name="ImageBox" TextChanged="Field_Changed"/>
+              <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                <Button Content="Browse..." Click="Browse_Click"/>
+                <Button Content="Clear image" Click="ClearImage_Click"/>
+              </StackPanel>
+
+              <Rectangle Height="1" Fill="{StaticResource Line}" Margin="0,14,0,0"/>
+
+              <TextBlock Text="ACTION" Style="{StaticResource Caption}"/>
+              <ComboBox x:Name="ActionBox" SelectionChanged="Field_Changed"/>
+
+              <TextBlock Text="EVENT NAME" Style="{StaticResource Caption}"/>
+              <TextBox x:Name="EventBox" TextChanged="Field_Changed"/>
+              <TextBlock Text="Sent to the host application when this key is pressed."
+                         Foreground="{StaticResource FgDim}" TextWrapping="Wrap"
+                         FontSize="11" Margin="0,4,0,0"/>
+
+              <Button Content="Clear this key" Click="ClearKey_Click" Margin="0,16,0,0"
+                      HorizontalAlignment="Left"/>
+            </StackPanel>
+
+            <Rectangle Height="1" Fill="{StaticResource Line}" Margin="0,18,0,0"/>
+            <TextBlock Text="LAST DECK EVENT" Style="{StaticResource Caption}"/>
+            <TextBlock x:Name="EventLog" Text="none yet" Foreground="{StaticResource Accent}"
+                       TextWrapping="Wrap" FontFamily="Consolas"/>
+          </StackPanel>
+        </ScrollViewer>
+      </Border>
+    </Grid>
+  </DockPanel>
+</Window>
+
+

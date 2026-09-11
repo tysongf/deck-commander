@@ -1,0 +1,987 @@
+{
+  "Name": "IL-2 Korea",
+  "Brightness": 65,
+  "ReservePageColumn": true,
+  "Pages": [
+    {
+      "Name": "Engine Start",
+      "Keys": [
+        {
+          "Label": "Master\nPower",
+          "ImagePath": null,
+          "Background": "#1E4C86",
+          "Glyph": "Power",
+          "ActionType": "Event",
+          "EventName": "Engine.MasterPower",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Fuel\nPump",
+          "ImagePath": null,
+          "Background": "#2F6FB5",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Engine.FuelPump",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Magnetos",
+          "ImagePath": null,
+          "Background": "#2F6FB5",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Engine.Magnetos",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Starter",
+          "ImagePath": null,
+          "Background": "#4E9E3E",
+          "Glyph": "Play",
+          "ActionType": "Event",
+          "EventName": "Engine.Starter",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Canopy",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Cockpit.Canopy",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Nav\nLights",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Lights.Nav",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Landing\nLight",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Lights.Landing",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Radiator",
+          "ImagePath": null,
+          "Background": "#2E8B87",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Engine.Radiator",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Chocks",
+          "ImagePath": null,
+          "Background": "#4A5160",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Ground.Chocks",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Parking\nBrake",
+          "ImagePath": null,
+          "Background": "#B5661F",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Ground.ParkingBrake",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Trim\nReset",
+          "ImagePath": null,
+          "Background": "#4A5160",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Controls.TrimReset",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Shut\nDown",
+          "ImagePath": null,
+          "Background": "#7A2020",
+          "Glyph": "Stop",
+          "ActionType": "Event",
+          "EventName": "Engine.Shutdown",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        }
+      ]
+    },
+    {
+      "Name": "Taxi \u002B Takeoff",
+      "Keys": [
+        {
+          "Label": "Brakes",
+          "ImagePath": null,
+          "Background": "#B5661F",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Controls.Brakes",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Flaps\nUp",
+          "ImagePath": null,
+          "Background": "#2F6FB5",
+          "Glyph": "ArrowUp",
+          "ActionType": "Event",
+          "EventName": "Controls.FlapsUp",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Flaps\nDown",
+          "ImagePath": null,
+          "Background": "#2F6FB5",
+          "Glyph": "ArrowDown",
+          "ActionType": "Event",
+          "EventName": "Controls.FlapsDown",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Gear\nToggle",
+          "ImagePath": null,
+          "Background": "#1E4C86",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Controls.GearToggle",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Throttle\nUp",
+          "ImagePath": null,
+          "Background": "#4E9E3E",
+          "Glyph": "ArrowUp",
+          "ActionType": "Event",
+          "EventName": "Engine.ThrottleUp",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Throttle\nDown",
+          "ImagePath": null,
+          "Background": "#2A5E22",
+          "Glyph": "ArrowDown",
+          "ActionType": "Event",
+          "EventName": "Engine.ThrottleDown",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Prop\nPitch",
+          "ImagePath": null,
+          "Background": "#2E8B87",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Engine.PropPitch",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Mixture",
+          "ImagePath": null,
+          "Background": "#2E8B87",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Engine.Mixture",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Tailwheel\nLock",
+          "ImagePath": null,
+          "Background": "#4A5160",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Controls.TailwheelLock",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Boost",
+          "ImagePath": null,
+          "Background": "#B5661F",
+          "Glyph": "Warning",
+          "ActionType": "Event",
+          "EventName": "Engine.Boost",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Trim\nNose Up",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "ArrowUp",
+          "ActionType": "Event",
+          "EventName": "Controls.TrimUp",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Trim\nNose Dn",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "ArrowDown",
+          "ActionType": "Event",
+          "EventName": "Controls.TrimDown",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        }
+      ]
+    },
+    {
+      "Name": "Navigation",
+      "Keys": [
+        {
+          "Label": "Map",
+          "ImagePath": null,
+          "Background": "#2F6FB5",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Nav.Map",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Prev WP",
+          "ImagePath": "",
+          "Background": "#2F6FB5",
+          "Glyph": "ArrowLeft",
+          "ActionType": "Event",
+          "EventName": "Nav.NextWaypoint",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Next WP",
+          "ImagePath": "",
+          "Background": "#1E4C86",
+          "Glyph": "ArrowRight",
+          "ActionType": "Event",
+          "EventName": "Nav.PrevWaypoint",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Auto\npilot",
+          "ImagePath": null,
+          "Background": "#5A45B0",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Nav.Autopilot",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Compass",
+          "ImagePath": null,
+          "Background": "#2E8B87",
+          "Glyph": "Target",
+          "ActionType": "Event",
+          "EventName": "Nav.Compass",
+          "IsEmpty": false
+        },
+        {
+          "Label": "ALT",
+          "ImagePath": "",
+          "Background": "#2E8B87",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Nav.AltimeterSet",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Mission\nClock",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Nav.Clock",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Fuel\nCheck",
+          "ImagePath": null,
+          "Background": "#B58A1F",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Nav.FuelCheck",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Radio",
+          "ImagePath": null,
+          "Background": "#3F4CA8",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Nav.Radio",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Beacon",
+          "ImagePath": null,
+          "Background": "#3F4CA8",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Nav.Beacon",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Course\nHold",
+          "ImagePath": null,
+          "Background": "#5A45B0",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Nav.CourseHold",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Level\nFlight",
+          "ImagePath": null,
+          "Background": "#5A45B0",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Nav.LevelFlight",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        }
+      ]
+    },
+    {
+      "Name": "Combat",
+      "Keys": [
+        {
+          "Label": "Guns",
+          "ImagePath": null,
+          "Background": "#B03A3A",
+          "Glyph": "Target",
+          "ActionType": "Event",
+          "EventName": "Weapons.Guns",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Cannons",
+          "ImagePath": null,
+          "Background": "#7A2020",
+          "Glyph": "Target",
+          "ActionType": "Event",
+          "EventName": "Weapons.Cannons",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Rockets",
+          "ImagePath": null,
+          "Background": "#B5661F",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Weapons.Rockets",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Bombs",
+          "ImagePath": null,
+          "Background": "#B5661F",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Weapons.Bombs",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Weapon\nSelect",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Weapons.Select",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Salvo",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Weapons.Salvo",
+          "IsEmpty": false
+        },
+        {
+          "Label": "MASTER\nARM",
+          "ImagePath": null,
+          "Background": "#7A2020",
+          "Glyph": "Warning",
+          "ActionType": "Event",
+          "EventName": "Weapons.MasterArm",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Gunsight",
+          "ImagePath": null,
+          "Background": "#4A5160",
+          "Glyph": "Target",
+          "ActionType": "Event",
+          "EventName": "Weapons.Gunsight",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Drop\nTanks",
+          "ImagePath": null,
+          "Background": "#4A5160",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Weapons.DropTanks",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Emerg\nBoost",
+          "ImagePath": null,
+          "Background": "#B5661F",
+          "Glyph": "Warning",
+          "ActionType": "Event",
+          "EventName": "Engine.EmergencyBoost",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Wingman\nAttack",
+          "ImagePath": null,
+          "Background": "#4E9E3E",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Comms.WingmanAttack",
+          "IsEmpty": false
+        },
+        {
+          "Label": "BAIL\nOUT",
+          "ImagePath": null,
+          "Background": "#7A2020",
+          "Glyph": "Warning",
+          "ActionType": "Event",
+          "EventName": "Emergency.BailOut",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        }
+      ]
+    },
+    {
+      "Name": "Landing",
+      "Keys": [
+        {
+          "Label": "Gear\nDown",
+          "ImagePath": null,
+          "Background": "#1E4C86",
+          "Glyph": "ArrowDown",
+          "ActionType": "Event",
+          "EventName": "Controls.GearDown",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Flaps\nLanding",
+          "ImagePath": null,
+          "Background": "#2F6FB5",
+          "Glyph": "ArrowDown",
+          "ActionType": "Event",
+          "EventName": "Controls.FlapsLanding",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Airbrake",
+          "ImagePath": null,
+          "Background": "#2F6FB5",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Controls.Airbrake",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Arrestor\nHook",
+          "ImagePath": null,
+          "Background": "#2E8B87",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Controls.Hook",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Landing\nLight",
+          "ImagePath": null,
+          "Background": "#B58A1F",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Lights.Landing",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Prop\nFull",
+          "ImagePath": null,
+          "Background": "#2E8B87",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Engine.PropFull",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Trim\nApproach",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Controls.TrimApproach",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Radiator\nOpen",
+          "ImagePath": null,
+          "Background": "#2E8B87",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Engine.RadiatorOpen",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Brakes",
+          "ImagePath": null,
+          "Background": "#B5661F",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Controls.Brakes",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Canopy\nOpen",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Cockpit.Canopy",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Engine\nOff",
+          "ImagePath": null,
+          "Background": "#7A2020",
+          "Glyph": "Stop",
+          "ActionType": "Event",
+          "EventName": "Engine.Shutdown",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Taxi to\nRamp",
+          "ImagePath": null,
+          "Background": "#4E9E3E",
+          "Glyph": "Check",
+          "ActionType": "Event",
+          "EventName": "Ground.TaxiToRamp",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        }
+      ]
+    },
+    {
+      "Name": "Views",
+      "Keys": [
+        {
+          "Label": "Cockpit",
+          "ImagePath": null,
+          "Background": "#2F6FB5",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "View.Cockpit",
+          "IsEmpty": false
+        },
+        {
+          "Label": "External",
+          "ImagePath": null,
+          "Background": "#2F6FB5",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "View.External",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Padlock",
+          "ImagePath": null,
+          "Background": "#5A45B0",
+          "Glyph": "Target",
+          "ActionType": "Event",
+          "EventName": "View.Padlock",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Free\nLook",
+          "ImagePath": null,
+          "Background": "#5A45B0",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "View.FreeLook",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Look\nForward",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "ArrowUp",
+          "ActionType": "Event",
+          "EventName": "View.Forward",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Look\nLeft",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "ArrowLeft",
+          "ActionType": "Event",
+          "EventName": "View.Left",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Look\nRight",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "ArrowRight",
+          "ActionType": "Event",
+          "EventName": "View.Right",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Look\nRear",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "ArrowDown",
+          "ActionType": "Event",
+          "EventName": "View.Rear",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Zoom\nIn",
+          "ImagePath": null,
+          "Background": "#4A5160",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "View.ZoomIn",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Zoom\nOut",
+          "ImagePath": null,
+          "Background": "#4A5160",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "View.ZoomOut",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Snap\nCentre",
+          "ImagePath": null,
+          "Background": "#4A5160",
+          "Glyph": "Target",
+          "ActionType": "Event",
+          "EventName": "View.SnapCentre",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Screen\nshot",
+          "ImagePath": null,
+          "Background": "#2E8B87",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "System.Screenshot",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        }
+      ]
+    },
+    {
+      "Name": "Mission Control",
+      "Keys": [
+        {
+          "Label": "START\nMISSION",
+          "ImagePath": null,
+          "Background": "#4E9E3E",
+          "Glyph": "Play",
+          "ActionType": "Event",
+          "EventName": "Mission.Start",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Pause",
+          "ImagePath": null,
+          "Background": "#B5661F",
+          "Glyph": "Pause",
+          "ActionType": "Event",
+          "EventName": "Mission.Pause",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Resume",
+          "ImagePath": null,
+          "Background": "#4E9E3E",
+          "Glyph": "Play",
+          "ActionType": "Event",
+          "EventName": "Mission.Resume",
+          "IsEmpty": false
+        },
+        {
+          "Label": "STOP",
+          "ImagePath": null,
+          "Background": "#7A2020",
+          "Glyph": "Stop",
+          "ActionType": "Event",
+          "EventName": "Mission.Stop",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Next\nPhase",
+          "ImagePath": null,
+          "Background": "#2F6FB5",
+          "Glyph": "ArrowRight",
+          "ActionType": "Event",
+          "EventName": "Mission.NextPhase",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Prev\nPhase",
+          "ImagePath": null,
+          "Background": "#1E4C86",
+          "Glyph": "ArrowLeft",
+          "ActionType": "Event",
+          "EventName": "Mission.PrevPhase",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Spawn\nFlight",
+          "ImagePath": null,
+          "Background": "#2E8B87",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Mission.SpawnFlight",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Despawn",
+          "ImagePath": null,
+          "Background": "#4A5160",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Mission.Despawn",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
+          "Label": "Weather",
+          "ImagePath": null,
+          "Background": "#3F4CA8",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Mission.Weather",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Time\nSkip",
+          "ImagePath": null,
+          "Background": "#5A45B0",
+          "Glyph": "None",
+          "ActionType": "Event",
+          "EventName": "Mission.TimeSkip",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Mark\nObjective",
+          "ImagePath": null,
+          "Background": "#B58A1F",
+          "Glyph": "Star",
+          "ActionType": "Event",
+          "EventName": "Mission.MarkObjective",
+          "IsEmpty": false
+        },
+        {
+          "Label": "Debrief",
+          "ImagePath": null,
+          "Background": "#93368F",
+          "Glyph": "Check",
+          "ActionType": "Event",
+          "EventName": "Mission.Debrief",
+          "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        }
+      ]
+    }
+  ]
+}
