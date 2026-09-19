@@ -30,7 +30,11 @@ class Program
         }
         if (profile == null) { Console.WriteLine("File not found: " + path); return 1; }
 
+        var model = DeckModel.FromKey(profile.Model) ?? DeckModel.Default;
+        var layout = DeckLayout.For(model);
+
         Console.WriteLine("Profile      : " + profile.Name);
+        Console.WriteLine("Deck         : " + model);
         Console.WriteLine("Brightness   : " + profile.Brightness);
         Console.WriteLine("Nav column   : " + (profile.ReservePageColumn ? "reserved" : "not reserved"));
         Console.WriteLine("Pages        : " + profile.Pages.Count);
@@ -57,12 +61,12 @@ class Program
         var first = profile.Pages[0];
         Console.WriteLine();
         Console.WriteLine("sample (page 1):");
-        for (int g = 0; g < DeckLayout.TotalKeys; g++)
+        for (int g = 0; g < layout.TotalKeys && g < first.Keys.Count; g++)
         {
             var k = first.Keys[g];
             if (k == null || k.IsEmpty) continue;
             Console.WriteLine(string.Format("  grid {0,2} (r{1} c{2})  {3,-22} {4,-9} {5}",
-                g, DeckLayout.RowOf(g) + 1, DeckLayout.ColumnOf(g) + 1,
+                g, layout.RowOf(g) + 1, layout.ColumnOf(g) + 1,
                 (k.Label ?? "").Replace("\n", " "), k.Glyph, k.EventName));
         }
         return 0;
@@ -92,29 +96,33 @@ class Program
 
     static int RunDemo(int seconds)
     {
-        var profile = new DeckProfile { Name = "Demo", Brightness = 65 };
-        profile.Pages.Clear();
-        string[] pageNames = { "Startup", "Taxi", "Takeoff", "Nav", "Combat", "Landing", "Debrief" };
-        for (int p = 0; p < pageNames.Length; p++)
-        {
-            var page = new DeckPage { Name = pageNames[p] };
-            var grids = DeckLayout.ActionGrids(true);
-            for (int k = 0; k < grids.Length; k++)
-            {
-                page.Keys[grids[k]] = new KeyDefinition
-                {
-                    Label = pageNames[p].Substring(0, 3) + "\n" + (k + 1),
-                    Background = Hex(FromHue(((p * 47) + k * 13) % 360)),
-                    ActionType = DeckActionType.Event,
-                    EventName = pageNames[p] + "." + (k + 1)
-                };
-            }
-            profile.Pages.Add(page);
-        }
-
         using (var deck = AjazzStreamDock.OpenFirst())
         using (var ctrl = new DeckController(deck))
         {
+            // Build the demo against whatever is actually plugged in.
+            var layout = ctrl.Layout;
+            var grids = layout.ActionGrids(true);
+            var profile = new DeckProfile { Name = "Demo", Brightness = 65 };
+            profile.Pages.Clear();
+            string[] pageNames = { "Startup", "Taxi", "Takeoff", "Nav", "Combat", "Landing", "Debrief" };
+            for (int p = 0; p < pageNames.Length; p++)
+            {
+                var page = new DeckPage { Name = pageNames[p] };
+                page.Normalise(layout.Rows, layout.Columns, layout.Rows, layout.Columns,
+                               deck.Model.EncoderCount);
+                for (int k = 0; k < grids.Length; k++)
+                {
+                    page.Keys[grids[k]] = new KeyDefinition
+                    {
+                        Label = pageNames[p].Substring(0, 3) + "\n" + (k + 1),
+                        Background = Hex(FromHue(((p * 47) + k * 13) % 360)),
+                        ActionType = DeckActionType.Event,
+                        EventName = pageNames[p] + "." + (k + 1)
+                    };
+                }
+                profile.Pages.Add(page);
+            }
+
             ctrl.ActionTriggered += (s, e) =>
                 Console.WriteLine(string.Format("{0:HH:mm:ss}  ACTION  {1}", DateTime.Now, e));
             ctrl.PageChanged += (s, e) =>
@@ -125,7 +133,8 @@ class Program
             ctrl.Profile = profile;
 
             Console.WriteLine();
-            Console.WriteLine("DEMO: 7 pages, 12 action keys each.");
+            Console.WriteLine(string.Format("DEMO on {0}: 7 pages, {1} action keys each.",
+                deck.Model.Name, grids.Length));
             Console.WriteLine("  right column: top = page up, middle = page indicator, bottom = page down");
             Console.WriteLine("  press the indicator to open the page selector, press it again to cancel");
             Console.WriteLine();
@@ -139,6 +148,44 @@ class Program
         return string.Format("#{0:X2}{1:X2}{2:X2}", c.R, c.G, c.B);
     }
 
+    /// <summary>Plain-English position of a grid index on a given deck.</summary>
+    static string Describe(DeckModel model, int grid)
+    {
+        int row = model.RowOf(grid), col = model.ColumnOf(grid);
+        string v = model.Rows == 1 ? "" :
+                   row == 0 ? "top " :
+                   row == model.Rows - 1 ? "bottom " : "middle ";
+        string h = col == 0 ? "left" :
+                   col == model.Columns - 1 ? "right" :
+                   "col " + (col + 1);
+        string where = (v + h).Trim();
+        if (!model.IsPressable(grid)) return where + ", display only";
+        return model.HasScreen(grid) ? where : where + ", no screen";
+    }
+
+    /// <summary>Prints the whole device catalogue.</summary>
+    static int ListModels()
+    {
+        Console.WriteLine(DeckModel.All.Count + " models recognised:");
+        Console.WriteLine();
+        Console.WriteLine(string.Format("  {0,-38} {1,-10} {2,-4} {3,-7} {4,-6} {5}",
+            "Model", "USB id", "Ver", "Grid", "Keys", "Image"));
+        Console.WriteLine("  (Keys = pressable / with a screen)");
+        foreach (var m in DeckModel.All)
+        {
+            string img = m.KeyPixels(0) + "px";
+            if (m.KeyPixels(m.KeyCount - 1) != m.KeyPixels(0))
+                img += " / " + m.KeyPixels(m.KeyCount - 1) + "px";
+            Console.WriteLine(string.Format("  {0,-38} {1:x4}:{2:x4}  v{3,-3} {4}x{5,-5} {6,-6} {7}{8}",
+                m.Name, m.VendorId, m.ProductId, m.ProtocolVersion,
+                m.Rows, m.Columns, m.PressableKeys + "/" + m.DisplayKeys, img,
+                m.EncoderCount > 0 ? ", " + m.EncoderCount + " knobs" : ""));
+        }
+        Console.WriteLine();
+        Console.WriteLine("Only the Ajazz AKP153E (0300:1010) is verified against hardware.");
+        return 0;
+    }
+
     static int Main(string[] args)
     {
         var sw = new StreamWriter(Console.OpenStandardOutput());
@@ -147,7 +194,7 @@ class Program
 
         int seconds = 300;
         bool wake = false, connect = false, blink = false, clear = false, listen = true, init = false;
-        bool imagetest = false, imagegrid = false, demo = false;
+        bool imagetest = false, imagegrid = false, demo = false, listModels = false;
         string checkProfile = null, profilePath = null;
         int brightness = -1;
         int keepaliveMs = 0;
@@ -166,6 +213,7 @@ class Program
                 case "--imagetest":  imagetest = true; break;
                 case "--imagegrid":  imagegrid = true; break;
                 case "--demo":       demo = true; break;
+                case "--models":     listModels = true; break;
                 case "--checkprofile": checkProfile = args[++i]; break;
                 case "--profile":    profilePath = args[++i]; break;
                 case "--no-listen":  listen = false; break;
@@ -173,23 +221,33 @@ class Program
             }
         }
 
+        if (listModels) return ListModels();
         if (checkProfile != null) return CheckProfile(checkProfile);
         if (profilePath != null) return RunProfile(profilePath, seconds);
         if (demo) return RunDemo(seconds);
 
-        var decks = AjazzStreamDock.Enumerate();
-        Console.WriteLine("Ajazz HID interfaces found: " + decks.Count);
+        var decks = AjazzStreamDock.Enumerate(includeUnknown: true);
+        Console.WriteLine("Vendor-defined HID interfaces found: " + decks.Count);
         foreach (var d in decks) Console.WriteLine("  " + d);
         if (decks.Count == 0) return 1;
 
+        // Prefer a recognised deck; fall back to any vendor-defined interface that can
+        // be written to, which is how an unlisted model gets investigated.
         DeckInfo pick = null;
         foreach (var d in decks)
-            if (d.UsagePage >= 0xFF00 && d.OutputReportLength > 0) { pick = d; break; }
+            if (d.Model != null && d.OutputReportLength > 0) { pick = d; break; }
+        if (pick == null)
+            foreach (var d in decks)
+                if (d.UsagePage >= 0xFF00 && d.OutputReportLength > 0) { pick = d; break; }
         if (pick == null) pick = decks[0];
         Console.WriteLine("Using: " + pick);
         Console.WriteLine();
 
-        using (var deck = AjazzStreamDock.Open(pick))
+        if (pick.Model == null)
+            Console.WriteLine("Not in the catalogue; trying it as an AKP153E. Run --models to list.");
+        Console.WriteLine();
+
+        using (var deck = AjazzStreamDock.Open(pick, DeckModel.Default))
         {
             deck.RawReport += report =>
             {
@@ -209,11 +267,11 @@ class Program
                     DateTime.Now, report.Length, hex, asc));
                 Console.WriteLine("            nonzero: " + nz);
             };
-            string[] names = { "top-left", "top row 2", "top-middle", "top row 4", "top-right",
-                               "mid-left", "mid row 2", "centre",     "mid row 4", "mid-right",
-                               "bot-left", "bot row 2", "bot-middle", "bot row 4", "bot-right" };
             deck.KeyChanged += (s, e) =>
-                Console.WriteLine(string.Format("            ==> {0}  [{1}]", e, names[e.Key]));
+                Console.WriteLine(string.Format("            ==> {0}  [{1}]", e,
+                    Describe(deck.Model, e.Key)));
+            deck.EncoderChanged += (s, e) =>
+                Console.WriteLine(string.Format("            ==> {0}", e));
 
             if (listen) deck.Start();
 
@@ -231,15 +289,20 @@ class Program
             if (imagegrid)
             {
                 Console.WriteLine();
-                Console.WriteLine("Numbering all 15 keys in reading order...");
-                for (int i = 0; i < AjazzStreamDock.KeyCount; i++)
+                Console.WriteLine(string.Format("Numbering all {0} screens in reading order...",
+                    deck.Model.DisplayKeys));
+                for (int i = 0; i < deck.Model.KeyCount; i++)
                 {
+                    if (!deck.Model.HasScreen(i)) continue;
                     int hue = (i * 24) % 360;
-                    using (var tile = DeckImage.MakeTestTile((i + 1).ToString(), FromHue(hue)))
-                        deck.SetKeyImageJpeg(i, DeckImage.ToKeyJpeg(tile));
+                    int px = deck.Model.KeyPixels(i);
+                    using (var tile = DeckImage.MakeTestTile((i + 1).ToString(), FromHue(hue), px))
+                        deck.SetKeyImageJpeg(i, DeckImage.ToKeyJpeg(tile, deck.Model, i));
                     Thread.Sleep(100);
                 }
-                Console.WriteLine("Keys should now read 1-15 left to right, top to bottom.");
+                Console.WriteLine(string.Format(
+                    "Screens should now read 1-{0} left to right, top to bottom.",
+                    deck.Model.KeyCount));
                 Console.WriteLine();
             }
 
@@ -263,13 +326,16 @@ class Program
                     var orient = DeckImage.AllOrientations[v];
                     try
                     {
-                        using (var tile = DeckImage.MakeTestTile("F", colours[v]))
+                        using (var tile = DeckImage.MakeTestTile("F", colours[v],
+                                                                 deck.Model.KeyPixels(key)))
                         {
-                            byte[] jpeg = DeckImage.ToKeyJpeg(tile, orient);
+                            int px = deck.Model.KeyPixels(key);
+                            byte[] jpeg = DeckImage.ToKeyJpeg(tile, orient, px, px);
                             deck.SetKeyImageJpeg(key, jpeg);
                             Console.WriteLine(string.Format(
                                 "  variant {0} -> key {1} (row {2}, col {3})  {4}  {5} bytes",
-                                v + 1, key, key / 5, key % 5, orient, jpeg.Length));
+                                v + 1, key, deck.Model.RowOf(key), deck.Model.ColumnOf(key),
+                                orient, jpeg.Length));
                         }
                     }
                     catch (Exception ex)

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Linq;
 
@@ -10,14 +10,33 @@ namespace AjazzDeck.Core
         public int PageIndex { get; set; }
         /// <summary>Grid index of the key, top-left = 0, reading order.</summary>
         public int KeyIndex { get; set; }
-        public int Row { get { return DeckLayout.RowOf(KeyIndex); } }
-        public int Column { get { return DeckLayout.ColumnOf(KeyIndex); } }
+        public int Row { get; set; }
+        public int Column { get; set; }
         public string EventName { get; set; }
 
         public override string ToString()
         {
             return string.Format("page {0} key {1} (row {2}, col {3}){4}",
                 PageIndex + 1, KeyIndex, Row + 1, Column + 1,
+                string.IsNullOrWhiteSpace(EventName) ? "" : " -> " + EventName);
+        }
+    }
+
+    /// <summary>A knob turned or pressed. Only the AKP03 and AKP05 families have knobs.</summary>
+    public sealed class DeckEncoderActionEventArgs : EventArgs
+    {
+        public EncoderDefinition Encoder { get; set; }
+        public int PageIndex { get; set; }
+        public int EncoderIndex { get; set; }
+        /// <summary>-1 for left, +1 for right, 0 for a press.</summary>
+        public int Delta { get; set; }
+        public string EventName { get; set; }
+
+        public override string ToString()
+        {
+            return string.Format("page {0} knob {1} {2}{3}",
+                PageIndex + 1, EncoderIndex,
+                Delta == 0 ? "press" : (Delta < 0 ? "left" : "right"),
                 string.IsNullOrWhiteSpace(EventName) ? "" : " -> " + EventName);
         }
     }
@@ -32,7 +51,8 @@ namespace AjazzDeck.Core
     public sealed class DeckController : IDisposable
     {
         readonly AjazzStreamDock _deck;
-        readonly byte[][] _pushed = new byte[DeckLayout.TotalKeys][];
+        readonly DeckLayout _layout;
+        readonly byte[][] _pushed;
         readonly object _sync = new object();
 
         DeckProfile _profile = new DeckProfile();
@@ -43,15 +63,24 @@ namespace AjazzDeck.Core
         {
             if (deck == null) throw new ArgumentNullException("deck");
             _deck = deck;
+            _layout = DeckLayout.For(deck.Model);
+            _pushed = new byte[_layout.TotalKeys][];
             _deck.KeyChanged += OnKeyChanged;
+            _deck.EncoderChanged += OnEncoderChanged;
+            _profile.Normalise(deck.Model);
         }
 
         public DeckMode Mode { get; private set; } = DeckMode.Normal;
 
+        /// <summary>Geometry of the attached deck.</summary>
+        public DeckLayout Layout { get { return _layout; } }
+
+        public DeckModel Model { get { return _deck.Model; } }
+
         /// <summary>True when the rightmost column is acting as page controls.</summary>
         public bool NavReserved
         {
-            get { return _profile != null && _profile.ReservePageColumn; }
+            get { return _profile != null && _profile.ReservePageColumn && _layout.CanReserveNav; }
         }
 
         public DeckProfile Profile
@@ -60,7 +89,7 @@ namespace AjazzDeck.Core
             set
             {
                 _profile = value ?? new DeckProfile();
-                _profile.Normalise();
+                _profile.Normalise(_deck.Model);
                 if (_pageIndex >= _profile.Pages.Count) _pageIndex = 0;
                 Mode = DeckMode.Normal;
                 _deck.SetBrightness(_profile.Brightness);
@@ -101,6 +130,9 @@ namespace AjazzDeck.Core
         /// <summary>Raised only for keys with an action assigned.</summary>
         public event EventHandler<DeckActionEventArgs> ActionTriggered;
 
+        /// <summary>Raised when a knob is turned or pressed and has an event assigned.</summary>
+        public event EventHandler<DeckEncoderActionEventArgs> EncoderTriggered;
+
         public event EventHandler PageChanged;
 
         void RaisePageChanged()
@@ -122,11 +154,26 @@ namespace AjazzDeck.Core
         {
             lock (_sync)
             {
-                for (int grid = 0; grid < DeckLayout.TotalKeys; grid++)
+                for (int grid = 0; grid < _layout.TotalKeys; grid++)
                 {
+                    if (!_layout.HasScreen(grid)) continue;
                     using (var tile = RenderKey(grid))
-                        Push(grid, DeckImage.ToKeyJpeg(tile), force);
+                        Push(grid, DeckImage.ToKeyJpeg(tile, _deck.Model, grid), force);
                 }
+                RenderEncoders(force);
+            }
+        }
+
+        void RenderEncoders(bool force)
+        {
+            if (!_deck.Model.HasEncoderScreens) return;
+            var page = CurrentPage;
+            if (page == null) return;
+            var r = new KeyRenderer(_deck.Model.EncoderPixels.Width, _deck.Model.EncoderPixels.Height);
+            for (int i = 0; i < _deck.Model.EncoderCount && i < page.Encoders.Count; i++)
+            {
+                using (var tile = r.RenderEncoder(page.Encoders[i]))
+                    _deck.SetEncoderImageJpeg(i, DeckImage.ToEncoderJpeg(tile, _deck.Model));
             }
         }
 
@@ -134,60 +181,66 @@ namespace AjazzDeck.Core
         public void RenderSlot(int gridIndex)
         {
             if (Mode != DeckMode.Normal) { Render(); return; }
-            if (gridIndex < 0 || gridIndex >= DeckLayout.TotalKeys) return;
+            if (gridIndex < 0 || gridIndex >= _layout.TotalKeys) return;
+            if (!_layout.HasScreen(gridIndex)) return;
             lock (_sync)
                 using (var tile = RenderKey(gridIndex))
-                    Push(gridIndex, DeckImage.ToKeyJpeg(tile), false);
+                    Push(gridIndex, DeckImage.ToKeyJpeg(tile, _deck.Model, gridIndex), false);
         }
 
         Bitmap RenderKey(int grid)
         {
             if (Mode == DeckMode.Normal)
-                return RenderNormalKey(_profile, _pageIndex, grid);
+                return RenderNormalKey(_layout, _profile, _pageIndex, grid);
 
             // page selector, only reachable when the nav column is reserved
+            var r = KeyRenderer.For(_deck.Model, grid);
             int total = Math.Max(1, _profile.Pages.Count);
 
-            if (grid == DeckLayout.PageIndicatorKey)
-                return KeyRenderer.RenderIndicator(_pageIndex + 1, total, true);
-            if (grid == DeckLayout.PageUpKey)
-                return KeyRenderer.RenderArrow(true, _selectorOffset > 0);
-            if (grid == DeckLayout.PageDownKey)
-                return KeyRenderer.RenderArrow(false,
-                    _selectorOffset + DeckLayout.ActionKeyCount(true) < total);
+            if (grid == _layout.PageIndicatorKey)
+                return r.RenderIndicator(_pageIndex + 1, total, true);
+            if (grid == _layout.PageUpKey)
+                return r.RenderArrow(true, _selectorOffset > 0);
+            if (grid == _layout.PageDownKey)
+                return r.RenderArrow(false, _selectorOffset + _layout.ActionKeyCount(true) < total);
 
-            var grids = DeckLayout.ActionGrids(true);
+            var grids = _layout.ActionGrids(true);
             int slot = Array.IndexOf(grids, grid);
-            if (slot < 0) return KeyRenderer.RenderEmpty();
+            if (slot < 0) return r.RenderEmpty();
 
             int page = _selectorOffset + slot;
-            if (page >= total) return KeyRenderer.RenderEmpty();
-            return KeyRenderer.RenderPageTile(page + 1, _profile.Pages[page].Name, page == _pageIndex);
+            if (page >= total) return r.RenderEmpty();
+            return r.RenderPageTile(page + 1, _profile.Pages[page].Name, page == _pageIndex);
         }
 
         /// <summary>
         /// Renders a key exactly as the hardware shows it in normal mode. The editor uses
         /// this for its preview so what you see on screen matches the deck.
         /// </summary>
-        public static Bitmap RenderNormalKey(DeckProfile profile, int pageIndex, int grid)
+        public static Bitmap RenderNormalKey(DeckLayout layout, DeckProfile profile,
+                                             int pageIndex, int grid)
         {
-            bool nav = profile != null && profile.ReservePageColumn;
+            if (layout == null) layout = DeckLayout.Default;
+            var r = KeyRenderer.For(layout.Model, grid);
+            bool nav = profile != null && profile.ReservePageColumn && layout.CanReserveNav;
             int total = Math.Max(1, profile == null ? 1 : profile.Pages.Count);
 
             if (nav)
             {
-                if (grid == DeckLayout.PageIndicatorKey)
-                    return KeyRenderer.RenderIndicator(pageIndex + 1, total, false);
-                if (grid == DeckLayout.PageUpKey)
-                    return KeyRenderer.RenderArrow(true, total > 1);
-                if (grid == DeckLayout.PageDownKey)
-                    return KeyRenderer.RenderArrow(false, total > 1);
+                if (grid == layout.PageIndicatorKey)
+                    return r.RenderIndicator(pageIndex + 1, total, false);
+                if (grid == layout.PageUpKey)
+                    return r.RenderArrow(true, total > 1);
+                if (grid == layout.PageDownKey)
+                    return r.RenderArrow(false, total > 1);
             }
 
             if (profile == null || pageIndex < 0 || pageIndex >= profile.Pages.Count)
-                return KeyRenderer.RenderEmpty();
+                return r.RenderEmpty();
 
-            return KeyRenderer.Render(profile.Pages[pageIndex].Keys[grid]);
+            var keys = profile.Pages[pageIndex].Keys;
+            if (grid < 0 || grid >= keys.Count) return r.RenderEmpty();
+            return r.Render(keys[grid]);
         }
 
         void Push(int grid, byte[] jpeg, bool force)
@@ -206,29 +259,56 @@ namespace AjazzDeck.Core
             catch { /* never let a handler kill the reader thread */ }
         }
 
+        void OnEncoderChanged(object sender, DeckEncoderEventArgs e)
+        {
+            try { HandleEncoder(e.Encoder, e.Delta); }
+            catch { /* never let a handler kill the reader thread */ }
+        }
+
+        public void HandleEncoder(int encoder, int delta)
+        {
+            var page = CurrentPage;
+            if (page == null || encoder < 0 || encoder >= page.Encoders.Count) return;
+            var def = page.Encoders[encoder];
+            if (def == null) return;
+
+            string name = delta < 0 ? def.TurnLeftEvent
+                        : delta > 0 ? def.TurnRightEvent
+                        : def.PressEvent;
+            if (string.IsNullOrWhiteSpace(name)) return;
+
+            var h = EncoderTriggered;
+            if (h != null)
+                h(this, new DeckEncoderActionEventArgs
+                {
+                    Encoder = def, PageIndex = _pageIndex,
+                    EncoderIndex = encoder, Delta = delta, EventName = name
+                });
+        }
+
         public void HandleKey(int grid)
         {
             int total = Math.Max(1, _profile.Pages.Count);
             bool nav = NavReserved;
 
-            if (nav && grid == DeckLayout.PageIndicatorKey)
+            if (nav && _layout.HasPageIndicator && grid == _layout.PageIndicatorKey)
             {
                 if (Mode == DeckMode.PageSelector) { Mode = DeckMode.Normal; Render(); }
                 else if (total > 1)
                 {
                     Mode = DeckMode.PageSelector;
-                    int per = DeckLayout.ActionKeyCount(true);
+                    int per = _layout.ActionKeyCount(true);
                     _selectorOffset = (_pageIndex / per) * per;
                     Render();
                 }
                 return;
             }
 
-            if (nav && grid == DeckLayout.PageUpKey)
+            if (nav && grid == _layout.PageUpKey)
             {
                 if (Mode == DeckMode.PageSelector)
                 {
-                    int per = DeckLayout.ActionKeyCount(true);
+                    int per = _layout.ActionKeyCount(true);
                     if (_selectorOffset > 0)
                     {
                         _selectorOffset = Math.Max(0, _selectorOffset - per);
@@ -239,11 +319,11 @@ namespace AjazzDeck.Core
                 return;
             }
 
-            if (nav && grid == DeckLayout.PageDownKey)
+            if (nav && grid == _layout.PageDownKey)
             {
                 if (Mode == DeckMode.PageSelector)
                 {
-                    int per = DeckLayout.ActionKeyCount(true);
+                    int per = _layout.ActionKeyCount(true);
                     if (_selectorOffset + per < total)
                     {
                         _selectorOffset += per;
@@ -256,7 +336,7 @@ namespace AjazzDeck.Core
 
             if (Mode == DeckMode.PageSelector)
             {
-                var grids = DeckLayout.ActionGrids(true);
+                var grids = _layout.ActionGrids(true);
                 int slot = Array.IndexOf(grids, grid);
                 if (slot < 0) return;
                 int page = _selectorOffset + slot;
@@ -265,7 +345,7 @@ namespace AjazzDeck.Core
             }
 
             var current = CurrentPage;
-            if (current == null) return;
+            if (current == null || grid < 0 || grid >= current.Keys.Count) return;
             var def = current.Keys[grid];
 
             var kp = KeyPressed;
@@ -273,6 +353,7 @@ namespace AjazzDeck.Core
                 kp(this, new DeckActionEventArgs
                 {
                     Key = def, PageIndex = _pageIndex, KeyIndex = grid,
+                    Row = _layout.RowOf(grid), Column = _layout.ColumnOf(grid),
                     EventName = def == null ? "" : def.EventName
                 });
 
@@ -283,6 +364,7 @@ namespace AjazzDeck.Core
                 h(this, new DeckActionEventArgs
                 {
                     Key = def, PageIndex = _pageIndex, KeyIndex = grid,
+                    Row = _layout.RowOf(grid), Column = _layout.ColumnOf(grid),
                     EventName = def.EventName
                 });
         }
@@ -290,6 +372,7 @@ namespace AjazzDeck.Core
         public void Dispose()
         {
             _deck.KeyChanged -= OnKeyChanged;
+            _deck.EncoderChanged -= OnEncoderChanged;
         }
     }
 }

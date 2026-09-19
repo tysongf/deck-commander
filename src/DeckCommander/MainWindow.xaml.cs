@@ -16,15 +16,40 @@ namespace DeckCommander
     public partial class MainWindow : Window
     {
         readonly ObservableCollection<KeyTileVm> _tiles = new ObservableCollection<KeyTileVm>();
+        readonly ObservableCollection<EncoderTileVm> _knobs = new ObservableCollection<EncoderTileVm>();
 
         DeckProfile _profile = new DeckProfile();
         string _path;
         AjazzStreamDock _deck;
         DeckController _ctrl;
+        DeckModel _model = DeckModel.Default;
+        DeckLayout _layout = DeckLayout.Default;
         int _selectedGrid = -1;
+        int _selectedEncoder = -1;
         bool _ready;
         bool _suppress;
         HotkeyManager _hotkeys;
+
+        /// <summary>Bound by the preview's UniformGrid, so the grid follows the chosen deck.</summary>
+        public static readonly DependencyProperty GridRowsProperty =
+            DependencyProperty.Register("GridRows", typeof(int), typeof(MainWindow),
+                new PropertyMetadata(3));
+
+        public static readonly DependencyProperty GridColumnsProperty =
+            DependencyProperty.Register("GridColumns", typeof(int), typeof(MainWindow),
+                new PropertyMetadata(6));
+
+        public int GridRows
+        {
+            get { return (int)GetValue(GridRowsProperty); }
+            set { SetValue(GridRowsProperty, value); }
+        }
+
+        public int GridColumns
+        {
+            get { return (int)GetValue(GridColumnsProperty); }
+            set { SetValue(GridColumnsProperty, value); }
+        }
 
         static readonly string[] Presets =
         {
@@ -51,9 +76,11 @@ namespace DeckCommander
         {
             InitializeComponent();
 
-            for (int i = 0; i < DeckLayout.TotalKeys; i++)
-                _tiles.Add(new KeyTileVm { GridIndex = i, IsNav = false });
             KeyGrid.ItemsSource = _tiles;
+            EncoderStrip.ItemsSource = _knobs;
+
+            DeviceBox.ItemsSource = DeckModel.All;
+            DeviceBox.SelectedItem = _model;
 
             GlyphBox.ItemsSource = Enum.GetValues(typeof(KeyGlyph));
             ActionBox.ItemsSource = Enum.GetValues(typeof(DeckActionType));
@@ -75,6 +102,7 @@ namespace DeckCommander
             }
 
             NewProfile();
+            RebuildForModel();
             ReserveNavBox.IsChecked = _profile.ReservePageColumn;
             _ready = true;
             RefreshAll();
@@ -125,7 +153,7 @@ namespace DeckCommander
 
         bool NavReserved
         {
-            get { return _profile != null && _profile.ReservePageColumn; }
+            get { return _profile != null && _profile.ReservePageColumn && _layout.CanReserveNav; }
         }
 
         KeyDefinition SelectedKey
@@ -133,13 +161,98 @@ namespace DeckCommander
             get
             {
                 var page = SelectedPage;
-                if (page == null || _selectedGrid < 0) return null;
-                if (DeckLayout.IsNavKey(_selectedGrid, NavReserved)) return null;
+                if (page == null || _selectedGrid < 0 || _selectedGrid >= page.Keys.Count) return null;
+                if (_layout.IsNavKey(_selectedGrid, NavReserved)) return null;
                 return page.Keys[_selectedGrid];
             }
         }
 
+        EncoderDefinition SelectedEncoder
+        {
+            get
+            {
+                var page = SelectedPage;
+                if (page == null || _selectedEncoder < 0 ||
+                    _selectedEncoder >= page.Encoders.Count) return null;
+                return page.Encoders[_selectedEncoder];
+            }
+        }
+
         void Status(string text) { StatusText.Text = text; }
+
+        // ---------- device ----------
+
+        /// <summary>
+        /// Rebuilds the preview for the current model: grid shape, tile sizes, knob strip,
+        /// and the profile's page storage, which is remapped row and column wise.
+        /// </summary>
+        void RebuildForModel()
+        {
+            _layout = DeckLayout.For(_model);
+            _profile.Normalise(_model);
+
+            GridRows = _layout.Rows;
+            GridColumns = _layout.Columns;
+
+            // Fit the centre column, and keep the relative sizes of the real screens so a
+            // narrow sixth column reads as narrow here too.
+            int maxPx = 1;
+            for (int i = 0; i < _layout.TotalKeys; i++)
+                maxPx = Math.Max(maxPx, _model.KeyPixels(i));
+            double cell = Math.Max(52.0, Math.Min(112.0, 700.0 / _layout.Columns - 12));
+
+            _tiles.Clear();
+            for (int i = 0; i < _layout.TotalKeys; i++)
+            {
+                double f = _model.KeyPixels(i) / (double)maxPx;
+                _tiles.Add(new KeyTileVm
+                {
+                    GridIndex = i,
+                    HasScreen = _layout.HasScreen(i),
+                    IsPressable = _layout.IsPressable(i),
+                    TileWidth = Math.Round(cell * f),
+                    TileHeight = Math.Round(cell * f)
+                });
+            }
+
+            _knobs.Clear();
+            for (int i = 0; i < _model.EncoderCount; i++)
+                _knobs.Add(new EncoderTileVm { EncoderIndex = i });
+            EncoderStrip.Visibility = _model.EncoderCount > 0
+                ? Visibility.Visible : Visibility.Collapsed;
+
+            ReserveNavBox.IsEnabled = _layout.CanReserveNav;
+            if (!_layout.CanReserveNav) _profile.ReservePageColumn = false;
+
+            if (_selectedGrid >= _layout.TotalKeys) _selectedGrid = -1;
+            if (_selectedEncoder >= _model.EncoderCount) _selectedEncoder = -1;
+        }
+
+        void Device_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (!_ready || _suppress) return;
+            var model = DeviceBox.SelectedItem as DeckModel;
+            if (model == null || model == _model) return;
+
+            if (_ctrl != null && _deck != null && _deck.Model != model)
+            {
+                // The attached deck decides; putting the picker back is less surprising
+                // than silently designing for a deck that is not the one plugged in.
+                _suppress = true;
+                DeviceBox.SelectedItem = _model;
+                _suppress = false;
+                Status("Disconnect first to design for a different deck.");
+                return;
+            }
+
+            _model = model;
+            RebuildForModel();
+            RefreshAll();
+            Status(string.Format("Designing for {0}: {1}x{2}{3}, {4}px keys, protocol v{5}.",
+                _model.Name, _model.Rows, _model.Columns,
+                _model.EncoderCount > 0 ? " plus " + _model.EncoderCount + " knobs" : "",
+                _model.KeyPixels(0), _model.ProtocolVersion));
+        }
 
         // ---------- refresh ----------
 
@@ -162,21 +275,32 @@ namespace DeckCommander
         void RefreshGrid()
         {
             int page = SelectedPageIndex;
-            for (int i = 0; i < DeckLayout.TotalKeys; i++)
+            for (int i = 0; i < _tiles.Count; i++)
             {
-                using (var bmp = DeckController.RenderNormalKey(_profile, page, i))
+                using (var bmp = DeckController.RenderNormalKey(_layout, _profile, page, i))
                     _tiles[i].Image = ToImageSource(bmp);
-                _tiles[i].IsNav = DeckLayout.IsNavKey(i, NavReserved);
+                _tiles[i].IsNav = _layout.IsNavKey(i, NavReserved);
                 _tiles[i].IsSelected = (i == _selectedGrid);
             }
+
+            var current = SelectedPage;
+            for (int i = 0; i < _knobs.Count; i++)
+            {
+                _knobs[i].Label = (current != null && i < current.Encoders.Count)
+                    ? current.Encoders[i].Label : "";
+                _knobs[i].IsSelected = (i == _selectedEncoder);
+            }
+
+            int usable = _layout.ActionKeyCount(NavReserved);
             GridHint.Text = NavReserved
-                ? "Click a key to edit it. The right column is reserved for page controls."
-                : "Click a key to edit it. All 15 keys are available; change pages on the left.";
+                ? string.Format("Click a key to edit it. The right column is reserved for page controls, {0} action keys.", usable)
+                : string.Format("Click a key to edit it. All {0} keys are available; change pages on the left.", usable);
         }
 
         void RefreshTile(int grid)
         {
-            using (var bmp = DeckController.RenderNormalKey(_profile, SelectedPageIndex, grid))
+            if (grid < 0 || grid >= _tiles.Count) return;
+            using (var bmp = DeckController.RenderNormalKey(_layout, _profile, SelectedPageIndex, grid))
                 _tiles[grid].Image = ToImageSource(bmp);
         }
 
@@ -185,6 +309,15 @@ namespace DeckCommander
             _suppress = true;
             try
             {
+                if (_selectedEncoder >= 0)
+                {
+                    LoadEncoderInspector();
+                    return;
+                }
+
+                EncoderFields.Visibility = Visibility.Collapsed;
+                KeyFields.Visibility = Visibility.Visible;
+
                 if (_selectedGrid < 0)
                 {
                     KeyTitle.Text = "No key selected";
@@ -193,13 +326,13 @@ namespace DeckCommander
                     return;
                 }
 
-                int row = _selectedGrid / DeckLayout.Columns, col = _selectedGrid % DeckLayout.Columns;
+                int row = _layout.RowOf(_selectedGrid), col = _layout.ColumnOf(_selectedGrid);
+                KeyTitle.Text = string.Format("Row {0}, column {1}", row + 1, col + 1);
 
-                if (DeckLayout.IsNavKey(_selectedGrid, NavReserved))
+                if (_layout.IsNavKey(_selectedGrid, NavReserved))
                 {
-                    KeyTitle.Text = string.Format("Row {0}, column {1}", row + 1, col + 1);
-                    KeyHint.Text = _selectedGrid == DeckLayout.PageUpKey ? "Reserved: page up."
-                        : _selectedGrid == DeckLayout.PageDownKey ? "Reserved: page down."
+                    KeyHint.Text = _selectedGrid == _layout.PageUpKey ? "Reserved: page up."
+                        : _selectedGrid == _layout.PageDownKey ? "Reserved: page down."
                         : "Reserved: page indicator. Press it on the deck to open the page selector, "
                           + "press again to cancel.";
                     KeyFields.IsEnabled = false;
@@ -209,9 +342,16 @@ namespace DeckCommander
                 var key = SelectedKey;
                 if (key == null) { KeyFields.IsEnabled = false; return; }
 
-                KeyTitle.Text = string.Format("Row {0}, column {1}", row + 1, col + 1);
-                KeyHint.Text = "Action key.";
+                bool pressable = _layout.IsPressable(_selectedGrid);
+                KeyHint.Text = !pressable
+                    ? "Display only. This slot has a screen but no switch under it, so it can "
+                      + "show status but will never fire an event."
+                    : _layout.HasScreen(_selectedGrid)
+                        ? "Action key."
+                        : "Action key with no screen behind it: it fires events but cannot be drawn on.";
                 KeyFields.IsEnabled = true;
+                ActionBox.IsEnabled = pressable;
+                EventBox.IsEnabled = pressable;
 
                 LabelBox.Text = key.Label ?? "";
                 GlyphBox.SelectedItem = key.Glyph;
@@ -222,6 +362,28 @@ namespace DeckCommander
                 ColourSwatch.Background = new SolidColorBrush(ToMediaColour(key.Background));
             }
             finally { _suppress = false; }
+        }
+
+        void LoadEncoderInspector()
+        {
+            KeyFields.Visibility = Visibility.Collapsed;
+            EncoderFields.Visibility = Visibility.Visible;
+
+            var enc = SelectedEncoder;
+            KeyTitle.Text = "Knob " + (_selectedEncoder + 1);
+            if (enc == null)
+            {
+                KeyHint.Text = "Not available on this page.";
+                EncoderFields.IsEnabled = false;
+                return;
+            }
+
+            KeyHint.Text = "Turning and pressing fire separate events.";
+            EncoderFields.IsEnabled = true;
+            EncLabelBox.Text = enc.Label ?? "";
+            EncLeftBox.Text = enc.TurnLeftEvent ?? "";
+            EncRightBox.Text = enc.TurnRightEvent ?? "";
+            EncPressBox.Text = enc.PressEvent ?? "";
         }
 
         // ---------- deck ----------
@@ -242,12 +404,34 @@ namespace DeckCommander
             if (_ctrl != null) { Disconnect(); return; }
             try
             {
-                _deck = AjazzStreamDock.OpenFirst();
+                var found = AjazzStreamDock.Enumerate();
+                if (found.Count == 0)
+                    throw new InvalidOperationException(
+                        "No deck found. " + DeckModel.All.Count +
+                        " models are recognised; if yours is not one of them it will not appear here.");
+
+                _deck = AjazzStreamDock.Open(found[0]);
+
+                // The deck that is actually plugged in wins over the picker.
+                if (_deck.Model != _model)
+                {
+                    _model = _deck.Model;
+                    _suppress = true;
+                    DeviceBox.SelectedItem = _model;
+                    _suppress = false;
+                    RebuildForModel();
+                    RefreshAll();
+                }
+
                 _ctrl = new DeckController(_deck);
                 _ctrl.KeyPressed += (s, ev) => Dispatcher.Invoke(() =>
                 {
                     EventLog.Text = ev.ToString();
                     SelectGrid(ev.KeyIndex);
+                });
+                _ctrl.EncoderTriggered += (s, ev) => Dispatcher.Invoke(() =>
+                {
+                    EventLog.Text = ev.ToString();
                 });
                 _ctrl.PageChanged += (s, ev) => Dispatcher.Invoke(() =>
                 {
@@ -261,6 +445,7 @@ namespace DeckCommander
                 _ctrl.PageIndex = SelectedPageIndex;
 
                 ConnectBtn.Content = "Disconnect";
+                DeviceBox.IsEnabled = false;
                 Status("Connected: " + _deck.Info);
             }
             catch (Exception ex)
@@ -279,6 +464,7 @@ namespace DeckCommander
             _ctrl = null;
             _deck = null;
             ConnectBtn.Content = "Connect deck";
+            DeviceBox.IsEnabled = true;
             Status("Not connected.");
         }
 
@@ -293,8 +479,10 @@ namespace DeckCommander
                 try { _ctrl.Render(true); } catch (Exception ex) { Status("Deck sync failed: " + ex.Message); }
             }
             Status(_profile.ReservePageColumn
-                ? "Right column reserved for page controls, 12 action keys."
-                : "All 15 keys usable. Change pages here in Deck Commander.");
+                ? string.Format("Right column reserved for page controls, {0} action keys.",
+                    _layout.ActionKeyCount(true))
+                : string.Format("All {0} keys usable. Change pages here in Deck Commander.",
+                    _layout.TotalKeys));
         }
 
         void Brightness_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -319,10 +507,28 @@ namespace DeckCommander
             SelectGrid((int)border.Tag);
         }
 
+        void Encoder_Click(object sender, MouseButtonEventArgs e)
+        {
+            var border = sender as Border;
+            if (border == null) return;
+            SelectEncoder((int)border.Tag);
+        }
+
         void SelectGrid(int grid)
         {
             _selectedGrid = grid;
+            _selectedEncoder = -1;
             for (int i = 0; i < _tiles.Count; i++) _tiles[i].IsSelected = (i == grid);
+            for (int i = 0; i < _knobs.Count; i++) _knobs[i].IsSelected = false;
+            LoadInspector();
+        }
+
+        void SelectEncoder(int encoder)
+        {
+            _selectedEncoder = encoder;
+            _selectedGrid = -1;
+            for (int i = 0; i < _tiles.Count; i++) _tiles[i].IsSelected = false;
+            for (int i = 0; i < _knobs.Count; i++) _knobs[i].IsSelected = (i == encoder);
             LoadInspector();
         }
 
@@ -347,6 +553,26 @@ namespace DeckCommander
             PushSlot(_selectedGrid);
         }
 
+        void Encoder_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_suppress || !_ready) return;
+            var enc = SelectedEncoder;
+            if (enc == null) return;
+
+            enc.Label = EncLabelBox.Text;
+            enc.TurnLeftEvent = EncLeftBox.Text;
+            enc.TurnRightEvent = EncRightBox.Text;
+            enc.PressEvent = EncPressBox.Text;
+
+            if (_selectedEncoder >= 0 && _selectedEncoder < _knobs.Count)
+                _knobs[_selectedEncoder].Label = enc.Label;
+
+            if (_ctrl != null && _model.HasEncoderScreens)
+            {
+                try { _ctrl.Render(false); } catch (Exception ex) { Status("Deck write failed: " + ex.Message); }
+            }
+        }
+
         void Browse_Click(object sender, RoutedEventArgs e)
         {
             var dlg = new Microsoft.Win32.OpenFileDialog
@@ -362,8 +588,8 @@ namespace DeckCommander
         void ClearKey_Click(object sender, RoutedEventArgs e)
         {
             var page = SelectedPage;
-            if (page == null || _selectedGrid < 0) return;
-            if (DeckLayout.IsNavKey(_selectedGrid, NavReserved)) return;
+            if (page == null || _selectedGrid < 0 || _selectedGrid >= page.Keys.Count) return;
+            if (_layout.IsNavKey(_selectedGrid, NavReserved)) return;
             page.Keys[_selectedGrid] = new KeyDefinition();
             LoadInspector();
             RefreshTile(_selectedGrid);
@@ -396,12 +622,20 @@ namespace DeckCommander
             PageList.ItemsSource = null;
             PageList.ItemsSource = _profile.Pages;
             PageList.SelectedIndex = keep;
-            RefreshTile(DeckLayout.PageIndicatorKey);
+            if (_layout.HasPageIndicator) RefreshTile(_layout.PageIndicatorKey);
+        }
+
+        DeckPage NewPage(string name)
+        {
+            var page = new DeckPage { Name = name };
+            page.Normalise(_layout.Rows, _layout.Columns,
+                _layout.Rows, _layout.Columns, _model.EncoderCount);
+            return page;
         }
 
         void AddPage_Click(object sender, RoutedEventArgs e)
         {
-            _profile.Pages.Add(new DeckPage { Name = "Page " + (_profile.Pages.Count + 1) });
+            _profile.Pages.Add(NewPage("Page " + (_profile.Pages.Count + 1)));
             RefreshPageList();
             PageList.SelectedIndex = _profile.Pages.Count - 1;
             SyncDeckProfile();
@@ -411,8 +645,11 @@ namespace DeckCommander
         {
             var page = SelectedPage;
             if (page == null) return;
-            var copy = new DeckPage { Name = page.Name + " copy" };
-            for (int i = 0; i < page.Keys.Count; i++) copy.Keys[i] = page.Keys[i].Clone();
+            var copy = NewPage(page.Name + " copy");
+            for (int i = 0; i < page.Keys.Count && i < copy.Keys.Count; i++)
+                copy.Keys[i] = page.Keys[i].Clone();
+            for (int i = 0; i < page.Encoders.Count && i < copy.Encoders.Count; i++)
+                copy.Encoders[i] = page.Encoders[i].Clone();
             _profile.Pages.Insert(SelectedPageIndex + 1, copy);
             RefreshPageList();
             PageList.SelectedIndex = _profile.Pages.IndexOf(copy);
@@ -460,9 +697,10 @@ namespace DeckCommander
         void NewProfile()
         {
             _profile = new DeckProfile { Name = "Untitled" };
-            _profile.Normalise();
+            _profile.Normalise(_model);
             _path = null;
             _selectedGrid = -1;
+            _selectedEncoder = -1;
             Title = "Deck Commander - Untitled";
         }
 
@@ -487,16 +725,19 @@ namespace DeckCommander
             if (dlg.ShowDialog(this) != true) return;
             try
             {
-                var loaded = ProfileStore.Load(dlg.FileName);
+                // Fit whatever the profile was written for onto the deck in front of us.
+                var loaded = ProfileStore.Load(dlg.FileName, _model);
                 if (loaded == null) { Status("Nothing loaded."); return; }
                 _profile = loaded;
                 _path = dlg.FileName;
                 _selectedGrid = -1;
+                _selectedEncoder = -1;
                 Title = "Deck Commander - " + Path.GetFileName(_path);
                 _suppress = true;
                 BrightnessSlider.Value = _profile.Brightness;
                 ReserveNavBox.IsChecked = _profile.ReservePageColumn;
                 _suppress = false;
+                RebuildForModel();
                 RefreshAll();
                 SyncDeckProfile();
                 Status("Loaded " + _path);
@@ -583,6 +824,3 @@ namespace DeckCommander
         }
     }
 }
-
-
-

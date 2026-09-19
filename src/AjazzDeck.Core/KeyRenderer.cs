@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
@@ -6,14 +6,47 @@ using System.IO;
 
 namespace AjazzDeck.Core
 {
-    /// <summary>Draws the 85x85 tiles that get pushed to the deck.</summary>
-    public static class KeyRenderer
+    /// <summary>
+    /// Draws the tiles that get pushed to the deck. Sizes run from 60px on the knob decks
+    /// to 112px on the N4, so every measurement is expressed relative to the 85px tile the
+    /// artwork was designed at and scaled on the way out.
+    /// </summary>
+    public sealed class KeyRenderer
     {
-        public const int Size = DeckImage.KeySize;
+        /// <summary>The size the layout constants were authored at.</summary>
+        public const int BaseSize = DeckImage.KeySize;
+
+        public int Width { get; private set; }
+        public int Height { get; private set; }
+
+        /// <summary>Scale from the authored 85px tile to this renderer's tile.</summary>
+        readonly float _s;
 
         static readonly Color Empty = Color.FromArgb(24, 26, 31);
         static readonly Color NavBack = Color.FromArgb(38, 42, 52);
         static readonly Color Accent = Color.FromArgb(90, 160, 255);
+
+        public KeyRenderer(int size) : this(size, size) { }
+
+        public KeyRenderer(int width, int height)
+        {
+            if (width < 8 || height < 8) throw new ArgumentOutOfRangeException("width");
+            Width = width;
+            Height = height;
+            _s = Math.Min(width, height) / (float)BaseSize;
+        }
+
+        /// <summary>An 85px renderer, matching the protocol v1 decks and the editor preview.</summary>
+        public static readonly KeyRenderer Default = new KeyRenderer(BaseSize);
+
+        /// <summary>The renderer for one key of a specific deck.</summary>
+        public static KeyRenderer For(DeckModel model, int grid)
+        {
+            int px = model.KeyPixels(grid);
+            return px == BaseSize ? Default : new KeyRenderer(px);
+        }
+
+        float S(float authored) { return authored * _s; }
 
         public static Color ParseColour(string hex, Color fallback)
         {
@@ -31,9 +64,9 @@ namespace AjazzDeck.Core
             return fallback;
         }
 
-        static Bitmap NewTile(Color background, out Graphics g)
+        Bitmap NewTile(Color background, out Graphics g)
         {
-            var bmp = new Bitmap(Size, Size);
+            var bmp = new Bitmap(Width, Height);
             g = Graphics.FromImage(bmp);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
@@ -42,11 +75,11 @@ namespace AjazzDeck.Core
             return bmp;
         }
 
-        static void DrawCentredText(Graphics g, string text, float emSize, Color colour,
-                                    RectangleF area, FontStyle style = FontStyle.Bold)
+        void DrawCentredText(Graphics g, string text, float emSize, Color colour,
+                             RectangleF area, FontStyle style = FontStyle.Bold)
         {
             if (string.IsNullOrEmpty(text)) return;
-            using (var f = new Font("Segoe UI", emSize, style, GraphicsUnit.Pixel))
+            using (var f = new Font("Segoe UI", Math.Max(6f, S(emSize)), style, GraphicsUnit.Pixel))
             using (var b = new SolidBrush(colour))
             using (var sf = new StringFormat
                    {
@@ -67,7 +100,7 @@ namespace AjazzDeck.Core
             float r = Math.Min(box.Width, box.Height) * 0.34f;
 
             using (var brush = new SolidBrush(colour))
-            using (var pen = new Pen(colour, Math.Max(3f, r * 0.28f))
+            using (var pen = new Pen(colour, Math.Max(1.5f, r * 0.28f))
                    { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
             {
                 switch (glyph)
@@ -157,14 +190,17 @@ namespace AjazzDeck.Core
         }
 
         /// <summary>Renders a configured action key.</summary>
-        public static Bitmap Render(KeyDefinition key)
+        public Bitmap Render(KeyDefinition key)
         {
             if (key == null || key.IsEmpty) return RenderEmpty();
 
+            float labelBand = S(24);
             Graphics g;
             var bmp = NewTile(ParseColour(key.Background, Empty), out g);
             using (g)
             {
+                bool hasArt = false;
+
                 if (!string.IsNullOrWhiteSpace(key.ImagePath) && File.Exists(key.ImagePath))
                 {
                     try
@@ -172,56 +208,56 @@ namespace AjazzDeck.Core
                         using (var src = new Bitmap(key.ImagePath))
                         {
                             // fit inside the tile, leaving room for a label if present
-                            int box = string.IsNullOrWhiteSpace(key.Label) ? Size : Size - 22;
-                            float scale = Math.Min((float)box / src.Width, (float)box / src.Height);
+                            float box = string.IsNullOrWhiteSpace(key.Label) ? Height : Height - S(22);
+                            float scale = Math.Min(Width / (float)src.Width, box / src.Height);
                             int w = Math.Max(1, (int)(src.Width * scale));
                             int h = Math.Max(1, (int)(src.Height * scale));
-                            g.DrawImage(src, (Size - w) / 2, (box - h) / 2, w, h);
+                            g.DrawImage(src, (Width - w) / 2, (int)((box - h) / 2), w, h);
+                            hasArt = true;
                         }
                     }
                     catch { /* unreadable image: fall through to the label */ }
                 }
 
-                bool hasArt = !string.IsNullOrWhiteSpace(key.ImagePath) && File.Exists(key.ImagePath);
                 if (!hasArt && key.Glyph != KeyGlyph.None)
                 {
-                    int box = string.IsNullOrWhiteSpace(key.Label) ? Size : Size - 22;
-                    DrawGlyph(g, key.Glyph, new RectangleF(8, 6, Size - 16, box - 12), Color.White);
+                    float box = string.IsNullOrWhiteSpace(key.Label) ? Height : Height - S(22);
+                    DrawGlyph(g, key.Glyph,
+                        new RectangleF(S(8), S(6), Width - S(16), box - S(12)), Color.White);
                     hasArt = true;
                 }
 
                 if (!string.IsNullOrWhiteSpace(key.Label))
                 {
-                    bool hasImage = hasArt;
-                    if (hasImage)
+                    if (hasArt)
                     {
                         using (var shade = new SolidBrush(Color.FromArgb(150, 0, 0, 0)))
-                            g.FillRectangle(shade, 0, Size - 24, Size, 24);
+                            g.FillRectangle(shade, 0, Height - labelBand, Width, labelBand);
                         DrawCentredText(g, key.Label, 15f, Color.White,
-                            new RectangleF(2, Size - 24, Size - 4, 24));
+                            new RectangleF(S(2), Height - labelBand, Width - S(4), labelBand));
                     }
                     else
                     {
                         DrawCentredText(g, key.Label, 17f, Color.White,
-                            new RectangleF(3, 3, Size - 6, Size - 6));
+                            new RectangleF(S(3), S(3), Width - S(6), Height - S(6)));
                     }
                 }
             }
             return bmp;
         }
 
-        public static Bitmap RenderEmpty()
+        public Bitmap RenderEmpty()
         {
             Graphics g;
             var bmp = NewTile(Empty, out g);
             using (g)
             using (var pen = new Pen(Color.FromArgb(44, 48, 58), 1))
-                g.DrawRectangle(pen, 1, 1, Size - 3, Size - 3);
+                g.DrawRectangle(pen, 1, 1, Width - 3, Height - 3);
             return bmp;
         }
 
         /// <summary>Page up / page down arrows.</summary>
-        public static Bitmap RenderArrow(bool up, bool enabled)
+        public Bitmap RenderArrow(bool up, bool enabled)
         {
             Graphics g;
             var bmp = NewTile(NavBack, out g);
@@ -230,17 +266,20 @@ namespace AjazzDeck.Core
                 var colour = enabled ? Accent : Color.FromArgb(70, 76, 90);
                 using (var b = new SolidBrush(colour))
                 {
-                    Point[] tri = up
-                        ? new[] { new Point(42, 26), new Point(64, 56), new Point(20, 56) }
-                        : new[] { new Point(42, 59), new Point(64, 29), new Point(20, 29) };
+                    float cx = Width / 2f, cy = Height / 2f, r = Math.Min(Width, Height) * 0.26f;
+                    PointF[] tri = up
+                        ? new[] { new PointF(cx, cy - r), new PointF(cx + r * 1.05f, cy + r * 0.72f),
+                                  new PointF(cx - r * 1.05f, cy + r * 0.72f) }
+                        : new[] { new PointF(cx, cy + r), new PointF(cx + r * 1.05f, cy - r * 0.72f),
+                                  new PointF(cx - r * 1.05f, cy - r * 0.72f) };
                     g.FillPolygon(b, tri);
                 }
             }
             return bmp;
         }
 
-        /// <summary>The "3 / 7" indicator, or a cancel glyph while the selector is open.</summary>
-        public static Bitmap RenderIndicator(int currentPage, int totalPages, bool selectorOpen)
+        /// <summary>The "3 of 7" indicator, or a cancel glyph while the selector is open.</summary>
+        public Bitmap RenderIndicator(int currentPage, int totalPages, bool selectorOpen)
         {
             Graphics g;
             var bmp = NewTile(selectorOpen ? Color.FromArgb(90, 40, 44) : NavBack, out g);
@@ -248,45 +287,63 @@ namespace AjazzDeck.Core
             {
                 if (selectorOpen)
                 {
-                    using (var pen = new Pen(Color.FromArgb(255, 120, 120), 7f))
+                    using (var pen = new Pen(Color.FromArgb(255, 120, 120), Math.Max(2f, S(7))))
                     {
-                        g.DrawLine(pen, 28, 28, 57, 57);
-                        g.DrawLine(pen, 57, 28, 28, 57);
+                        g.DrawLine(pen, S(28), S(28), S(57), S(57));
+                        g.DrawLine(pen, S(57), S(28), S(28), S(57));
                     }
                     DrawCentredText(g, "CANCEL", 11f, Color.FromArgb(255, 170, 170),
-                        new RectangleF(0, Size - 22, Size, 18));
+                        new RectangleF(0, Height - S(22), Width, S(18)));
                 }
                 else
                 {
                     DrawCentredText(g, currentPage.ToString(), 34f, Color.White,
-                        new RectangleF(0, 4, Size, 44));
+                        new RectangleF(0, S(4), Width, S(44)));
                     using (var pen = new Pen(Color.FromArgb(80, 88, 105), 1))
-                        g.DrawLine(pen, 22, 50, Size - 22, 50);
+                        g.DrawLine(pen, S(22), S(50), Width - S(22), S(50));
                     DrawCentredText(g, "of " + totalPages, 16f, Color.FromArgb(165, 175, 195),
-                        new RectangleF(0, 52, Size, 26), FontStyle.Regular);
+                        new RectangleF(0, S(52), Width, S(26)), FontStyle.Regular);
                 }
             }
             return bmp;
         }
 
         /// <summary>A page tile inside the page selector.</summary>
-        public static Bitmap RenderPageTile(int pageNumber, string name, bool isCurrent)
+        public Bitmap RenderPageTile(int pageNumber, string name, bool isCurrent)
         {
             Graphics g;
             var bmp = NewTile(isCurrent ? Color.FromArgb(30, 70, 130) : Color.FromArgb(30, 34, 42), out g);
             using (g)
             {
                 if (isCurrent)
-                    using (var pen = new Pen(Accent, 3f))
-                        g.DrawRectangle(pen, 2, 2, Size - 5, Size - 5);
+                    using (var pen = new Pen(Accent, Math.Max(1.5f, S(3))))
+                        g.DrawRectangle(pen, 2, 2, Width - 5, Height - 5);
 
                 DrawCentredText(g, pageNumber.ToString(), 30f, Color.White,
-                    new RectangleF(0, 6, Size, 40));
+                    new RectangleF(0, S(6), Width, S(40)));
                 DrawCentredText(g, name ?? "", 12f, Color.FromArgb(180, 190, 210),
-                    new RectangleF(3, 48, Size - 6, 32), FontStyle.Regular);
+                    new RectangleF(S(3), S(48), Width - S(6), S(32)), FontStyle.Regular);
+            }
+            return bmp;
+        }
+
+        /// <summary>A knob's screen: its label over the event it fires.</summary>
+        public Bitmap RenderEncoder(EncoderDefinition enc)
+        {
+            Graphics g;
+            var bmp = NewTile(Empty, out g);
+            using (g)
+            {
+                if (enc == null || enc.IsEmpty)
+                {
+                    using (var pen = new Pen(Color.FromArgb(44, 48, 58), 1))
+                        g.DrawRectangle(pen, 1, 1, Width - 3, Height - 3);
+                    return bmp;
+                }
+                DrawCentredText(g, enc.Label, 17f, Color.White,
+                    new RectangleF(S(3), S(3), Width - S(6), Height - S(6)));
             }
             return bmp;
         }
     }
 }
-
