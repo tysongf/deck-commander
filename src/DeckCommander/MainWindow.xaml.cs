@@ -20,7 +20,8 @@ namespace DeckCommander
 
         DeckProfile _profile = new DeckProfile();
         string _path;
-        AjazzStreamDock _deck;
+        IDeckDevice _device;
+        VirtualDeckWindow _virtualWindow;
         DeckController _ctrl;
         DeckModel _model = DeckModel.Default;
         DeckLayout _layout = DeckLayout.Default;
@@ -234,7 +235,7 @@ namespace DeckCommander
             var model = DeviceBox.SelectedItem as DeckModel;
             if (model == null || model == _model) return;
 
-            if (_ctrl != null && _deck != null && _deck.Model != model)
+            if (_ctrl != null && _device != null && _device.Model != model)
             {
                 // The attached deck decides; putting the picker back is less surprising
                 // than silently designing for a deck that is not the one plugged in.
@@ -410,12 +411,12 @@ namespace DeckCommander
                         "No deck found. " + DeckModel.All.Count +
                         " models are recognised; if yours is not one of them it will not appear here.");
 
-                _deck = AjazzStreamDock.Open(found[0]);
+                var deck = AjazzStreamDock.Open(found[0]);
 
                 // The deck that is actually plugged in wins over the picker.
-                if (_deck.Model != _model)
+                if (deck.Model != _model)
                 {
-                    _model = _deck.Model;
+                    _model = deck.Model;
                     _suppress = true;
                     DeviceBox.SelectedItem = _model;
                     _suppress = false;
@@ -423,30 +424,8 @@ namespace DeckCommander
                     RefreshAll();
                 }
 
-                _ctrl = new DeckController(_deck);
-                _ctrl.KeyPressed += (s, ev) => Dispatcher.Invoke(() =>
-                {
-                    EventLog.Text = ev.ToString();
-                    SelectGrid(ev.KeyIndex);
-                });
-                _ctrl.EncoderTriggered += (s, ev) => Dispatcher.Invoke(() =>
-                {
-                    EventLog.Text = ev.ToString();
-                });
-                _ctrl.PageChanged += (s, ev) => Dispatcher.Invoke(() =>
-                {
-                    if (PageList.SelectedIndex != _ctrl.PageIndex)
-                        PageList.SelectedIndex = _ctrl.PageIndex;
-                });
-
-                _ctrl.Start();
-                _profile.Brightness = (int)BrightnessSlider.Value;
-                _ctrl.Profile = _profile;
-                _ctrl.PageIndex = SelectedPageIndex;
-
-                ConnectBtn.Content = "Disconnect";
-                DeviceBox.IsEnabled = false;
-                Status("Connected: " + _deck.Info);
+                Attach(deck);
+                Status("Connected: " + _device.Description);
             }
             catch (Exception ex)
             {
@@ -457,13 +436,83 @@ namespace DeckCommander
             }
         }
 
+        /// <summary>
+        /// Runs the currently selected deck on screen. It goes through the same controller
+        /// as the hardware, so page navigation, image pushing and events all behave the
+        /// same; there is simply no USB at the other end.
+        /// </summary>
+        void Virtual_Click(object sender, RoutedEventArgs e)
+        {
+            if (_virtualWindow != null) { _virtualWindow.Activate(); return; }
+            if (_ctrl != null) Disconnect();
+
+            try
+            {
+                var deck = new VirtualDeck(_model);
+                _virtualWindow = new VirtualDeckWindow(deck) { Owner = this };
+                _virtualWindow.Closed += (s2, e2) =>
+                {
+                    _virtualWindow = null;
+                    if (_device is VirtualDeck) Disconnect();
+                };
+                _virtualWindow.Show();
+
+                Attach(deck);
+                Status("Virtual deck running: " + _device.Description);
+            }
+            catch (Exception ex)
+            {
+                Disconnect();
+                Status("Virtual deck failed: " + ex.Message);
+            }
+        }
+
+        /// <summary>Wires a device to a controller and hands it the current profile.</summary>
+        void Attach(IDeckDevice device)
+        {
+            _device = device;
+            _ctrl = new DeckController(device);
+            _ctrl.KeyPressed += (s, ev) => Dispatcher.Invoke(() =>
+            {
+                EventLog.Text = ev.ToString();
+                SelectGrid(ev.KeyIndex);
+            });
+            _ctrl.EncoderTriggered += (s, ev) => Dispatcher.Invoke(() =>
+            {
+                EventLog.Text = ev.ToString();
+            });
+            _ctrl.PageChanged += (s, ev) => Dispatcher.Invoke(() =>
+            {
+                if (PageList.SelectedIndex != _ctrl.PageIndex)
+                    PageList.SelectedIndex = _ctrl.PageIndex;
+            });
+
+            _ctrl.Start();
+            _profile.Brightness = (int)BrightnessSlider.Value;
+            _ctrl.Profile = _profile;
+            _ctrl.PageIndex = SelectedPageIndex;
+
+            ConnectBtn.Content = "Disconnect";
+            ConnectBtn.IsEnabled = !(device is VirtualDeck);
+            VirtualBtn.Content = device is VirtualDeck ? "Show virtual deck" : "Virtual deck";
+            DeviceBox.IsEnabled = false;
+        }
+
         void Disconnect()
         {
             try { if (_ctrl != null) _ctrl.Dispose(); } catch { }
-            try { if (_deck != null) _deck.Dispose(); } catch { }
+            try { if (_device != null) _device.Dispose(); } catch { }
             _ctrl = null;
-            _deck = null;
+            _device = null;
+            if (_virtualWindow != null)
+            {
+                var w = _virtualWindow;
+                _virtualWindow = null;
+                try { w.Close(); } catch { }
+            }
             ConnectBtn.Content = "Connect deck";
+            ConnectBtn.IsEnabled = true;
+            VirtualBtn.Content = "Virtual deck";
             DeviceBox.IsEnabled = true;
             Status("Not connected.");
         }
@@ -492,9 +541,9 @@ namespace DeckCommander
             BrightnessText.Text = v.ToString();
             if (!_ready) return;
             _profile.Brightness = v;
-            if (_deck != null)
+            if (_device != null)
             {
-                try { _deck.SetBrightness(v); } catch { }
+                try { _device.SetBrightness(v); } catch { }
             }
         }
 

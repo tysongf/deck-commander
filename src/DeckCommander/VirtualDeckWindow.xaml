@@ -1,0 +1,83 @@
+﻿<Window x:Class="DeckCommander.VirtualDeckWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Virtual Deck" SizeToContent="WidthAndHeight"
+        ResizeMode="CanMinimize" Icon="app.ico"
+        Background="{StaticResource Bg}"
+        TextOptions.TextFormattingMode="Display">
+
+  <StackPanel Margin="18">
+    <TextBlock x:Name="Caption" Text="Virtual deck" FontSize="13"
+               Foreground="{StaticResource FgDim}" Margin="0,0,0,12"/>
+
+    <Border x:Name="Panel" Background="#0A0B0F" CornerRadius="16" Padding="16"
+            BorderBrush="{StaticResource Line}" BorderThickness="1">
+      <StackPanel>
+        <ItemsControl x:Name="KeyGrid">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Rows="{Binding GridRows, RelativeSource={RelativeSource AncestorType=Window}}"
+                           Columns="{Binding GridColumns, RelativeSource={RelativeSource AncestorType=Window}}"/>
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <Border x:Name="tile" Width="{Binding TileWidth}" Height="{Binding TileHeight}"
+                      Margin="5" CornerRadius="8" Background="#000000"
+                      BorderBrush="#1C2130" BorderThickness="2"
+                      Tag="{Binding GridIndex}"
+                      MouseLeftButtonDown="Key_Down" MouseLeftButtonUp="Key_Up"
+                      MouseLeave="Key_Up" Cursor="Hand">
+                <Image Source="{Binding Image}" Stretch="Fill" Margin="2"
+                       RenderOptions.BitmapScalingMode="HighQuality"/>
+              </Border>
+              <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsPressable}" Value="False">
+                  <Setter TargetName="tile" Property="Cursor" Value="Arrow"/>
+                  <Setter TargetName="tile" Property="BorderBrush" Value="#2C2416"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                  <Setter TargetName="tile" Property="BorderBrush" Value="#5AA0FF"/>
+                  <Setter TargetName="tile" Property="RenderTransform">
+                    <Setter.Value><ScaleTransform ScaleX="0.94" ScaleY="0.94"/></Setter.Value>
+                  </Setter>
+                  <Setter TargetName="tile" Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                </DataTrigger>
+              </DataTemplate.Triggers>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- knobs -->
+        <ItemsControl x:Name="KnobStrip" Visibility="Collapsed" Margin="0,10,0,0">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate><UniformGrid Rows="1"/></ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Margin="5">
+                <Border Height="52" CornerRadius="8" Background="#000000"
+                        BorderBrush="#1C2130" BorderThickness="2">
+                  <Image Source="{Binding Image}" Stretch="Uniform" Margin="2"
+                         RenderOptions.BitmapScalingMode="HighQuality"/>
+                </Border>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,6,0,0">
+                  <Button Content="&#x25C0;" Tag="{Binding EncoderIndex}" Click="Knob_Left"
+                          MinWidth="34" Padding="4,2"/>
+                  <Button Content="&#x25CF;" Tag="{Binding EncoderIndex}" Click="Knob_Press"
+                          MinWidth="34" Padding="4,2"/>
+                  <Button Content="&#x25B6;" Tag="{Binding EncoderIndex}" Click="Knob_Right"
+                          MinWidth="34" Padding="4,2"/>
+                </StackPanel>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <TextBlock x:Name="Hint" Margin="0,12,0,0" FontSize="12" TextWrapping="Wrap"
+               MaxWidth="620" Foreground="{StaticResource FgDim}"
+               Text="Click a key to press it. This fires exactly the same events as the hardware."/>
+  </StackPanel>
+</Window>

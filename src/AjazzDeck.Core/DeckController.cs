@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Linq;
 
@@ -50,7 +50,7 @@ namespace AjazzDeck.Core
     /// </summary>
     public sealed class DeckController : IDisposable
     {
-        readonly AjazzStreamDock _deck;
+        readonly IDeckDevice _deck;
         readonly DeckLayout _layout;
         readonly byte[][] _pushed;
         readonly object _sync = new object();
@@ -59,7 +59,7 @@ namespace AjazzDeck.Core
         int _pageIndex;
         int _selectorOffset;
 
-        public DeckController(AjazzStreamDock deck)
+        public DeckController(IDeckDevice deck)
         {
             if (deck == null) throw new ArgumentNullException("deck");
             _deck = deck;

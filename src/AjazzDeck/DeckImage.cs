@@ -34,6 +34,22 @@ namespace AjazzDeck
             RotateFlipType.Rotate270FlipX       // 8
         };
 
+        /// <summary>
+        /// Undoes a pre-rotation. The panel rotates whatever it is given, so an on-screen
+        /// deck has to apply the same rotation in reverse to show what the hardware shows.
+        /// The four flip variants are reflections and so are their own inverse; only the
+        /// quarter turns need swapping.
+        /// </summary>
+        public static RotateFlipType InverseOrientation(RotateFlipType orientation)
+        {
+            switch (orientation)
+            {
+                case RotateFlipType.Rotate90FlipNone: return RotateFlipType.Rotate270FlipNone;
+                case RotateFlipType.Rotate270FlipNone: return RotateFlipType.Rotate90FlipNone;
+                default: return orientation;
+            }
+        }
+
         /// <summary>Encodes a bitmap for the deck using the default v1 size and orientation.</summary>
         public static byte[] ToKeyJpeg(Bitmap source)
         {

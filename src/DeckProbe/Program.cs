@@ -186,6 +186,197 @@ class Program
         return 0;
     }
 
+
+    /// <summary>
+    /// Drives every model in the catalogue through a VirtualDeck and checks the things
+    /// that can be checked without the hardware: that the key maps are one to one, that
+    /// the layout never puts navigation on a key with no switch, that every screen gets
+    /// painted, and that pressing a key raises the event the profile asked for.
+    ///
+    /// This does not test the wire protocol. It does test every mapping table, which is
+    /// where a transcription error would otherwise sit undetected.
+    /// </summary>
+    static int SelfTest()
+    {
+        int checkedModels = 0, failures = 0;
+
+        foreach (var model in DeckModel.All)
+        {
+            var problems = new System.Collections.Generic.List<string>();
+
+            // 1. grid -> device key must be one to one
+            var seen = new System.Collections.Generic.Dictionary<int, int>();
+            for (int g = 0; g < model.KeyCount; g++)
+            {
+                int dk = model.GridToDeviceKey(g);
+                if (seen.ContainsKey(dk))
+                    problems.Add(string.Format("grids {0} and {1} both map to device key {2}",
+                        seen[dk], g, dk));
+                else seen[dk] = g;
+            }
+
+            // 2. device key -> grid must be one to one and in range
+            var backwards = new System.Collections.Generic.Dictionary<int, int>();
+            for (int dk = 1; dk <= model.KeyCount; dk++)
+            {
+                int g;
+                if (!model.TryDeviceKeyToGrid(dk, out g))
+                {
+                    problems.Add("device key " + dk + " does not decode");
+                    continue;
+                }
+                if (backwards.ContainsKey(g))
+                    problems.Add(string.Format("device keys {0} and {1} both map to grid {2}",
+                        backwards[g], dk, g));
+                else backwards[g] = dk;
+            }
+
+            // 3. every screen needs a sane size
+            for (int g = 0; g < model.KeyCount; g++)
+                if (model.HasScreen(g) && model.KeyPixels(g) < 8)
+                    problems.Add("grid " + g + " has a screen but no size");
+
+            // 4. navigation must land on keys that exist and can be pressed
+            var layout = DeckLayout.For(model);
+            if (layout.CanReserveNav)
+            {
+                int[] nav = layout.HasPageIndicator
+                    ? new[] { layout.PageUpKey, layout.PageIndicatorKey, layout.PageDownKey }
+                    : new[] { layout.PageUpKey, layout.PageDownKey };
+                foreach (int k in nav)
+                {
+                    if (k < 0 || k >= model.KeyCount) problems.Add("nav key " + k + " is off the grid");
+                    else if (!model.IsPressable(k)) problems.Add("nav key " + k + " has no switch");
+                }
+                foreach (int g in layout.ActionGrids(true))
+                {
+                    if (!model.IsPressable(g)) problems.Add("action key " + g + " has no switch");
+                    if (model.ColumnOf(g) == layout.NavColumn)
+                        problems.Add("action key " + g + " is in the nav column");
+                }
+            }
+
+            // 5. run it for real through a virtual deck
+            var grids = layout.ActionGrids(layout.CanReserveNav);
+            var profile = new DeckProfile { Name = "selftest", Brightness = 60 };
+            profile.ReservePageColumn = layout.CanReserveNav;
+            profile.Pages.Clear();
+            for (int pg = 0; pg < 2; pg++)
+            {
+                var page = new DeckPage { Name = "P" + (pg + 1) };
+                page.Normalise(layout.Rows, layout.Columns, layout.Rows, layout.Columns,
+                               model.EncoderCount);
+                foreach (int g in grids)
+                    page.Keys[g] = new KeyDefinition
+                    {
+                        Label = "K" + g,
+                        ActionType = DeckActionType.Event,
+                        EventName = string.Format("p{0}.k{1}", pg + 1, g)
+                    };
+                for (int i = 0; i < page.Encoders.Count; i++)
+                    page.Encoders[i] = new EncoderDefinition
+                    {
+                        Label = "E" + i,
+                        TurnLeftEvent = "e" + i + ".left",
+                        TurnRightEvent = "e" + i + ".right",
+                        PressEvent = "e" + i + ".press"
+                    };
+                profile.Pages.Add(page);
+            }
+
+            try
+            {
+                using (var deck = new VirtualDeck(model))
+                using (var ctrl = new DeckController(deck))
+                {
+                    string lastAction = null, lastEncoder = null;
+                    ctrl.ActionTriggered += (s2, e2) => lastAction = e2.EventName;
+                    ctrl.EncoderTriggered += (s2, e2) => lastEncoder = e2.EventName;
+
+                    ctrl.Start();
+                    ctrl.Profile = profile;
+
+                    // every screen should have been painted
+                    for (int g = 0; g < model.KeyCount; g++)
+                        if (model.HasScreen(g) && deck.GetKeyJpeg(g) == null)
+                            problems.Add("grid " + g + " was never painted");
+
+                    // and the image should decode back to the right size
+                    foreach (int g in grids)
+                    {
+                        using (var bmp = deck.GetKeyBitmap(g))
+                        {
+                            if (bmp == null) { problems.Add("grid " + g + " image will not decode"); break; }
+                            if (bmp.Width != model.KeyPixels(g) || bmp.Height != model.KeyPixels(g))
+                                problems.Add(string.Format(
+                                    "grid {0} decoded {1}x{2}, expected {3}px square",
+                                    g, bmp.Width, bmp.Height, model.KeyPixels(g)));
+                            break;   // one sample is enough
+                        }
+                    }
+
+                    // pressing each action key must raise its own event
+                    foreach (int g in grids)
+                    {
+                        lastAction = null;
+                        deck.Press(g);
+                        string want = string.Format("p{0}.k{1}", ctrl.PageIndex + 1, g);
+                        if (lastAction != want)
+                            problems.Add(string.Format("press on grid {0} gave '{1}', expected '{2}'",
+                                g, lastAction ?? "nothing", want));
+                    }
+
+                    // knobs
+                    for (int i = 0; i < model.EncoderCount; i++)
+                    {
+                        lastEncoder = null;
+                        deck.Turn(i, 1);
+                        if (lastEncoder != "e" + i + ".right")
+                            problems.Add("knob " + i + " right gave '" + (lastEncoder ?? "nothing") + "'");
+                        lastEncoder = null;
+                        deck.PressEncoder(i);
+                        if (lastEncoder != "e" + i + ".press")
+                            problems.Add("knob " + i + " press gave '" + (lastEncoder ?? "nothing") + "'");
+                    }
+
+                    // page navigation, where the deck has it
+                    if (layout.CanReserveNav)
+                    {
+                        int before = ctrl.PageIndex;
+                        deck.Press(layout.PageDownKey);
+                        if (ctrl.PageIndex == before)
+                            problems.Add("page down did not change page");
+                        deck.Press(layout.PageUpKey);
+                        if (ctrl.PageIndex != before)
+                            problems.Add("page up did not return to page " + (before + 1));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                problems.Add("threw " + ex.GetType().Name + ": " + ex.Message);
+            }
+
+            checkedModels++;
+            if (problems.Count == 0)
+            {
+                Console.WriteLine(string.Format("  ok    {0,-38} {1,2} keys, {2,2} action, {3} knobs",
+                    model.Name, model.PressableKeys, grids.Length, model.EncoderCount));
+            }
+            else
+            {
+                failures++;
+                Console.WriteLine("  FAIL  " + model.Name);
+                foreach (var pr in problems) Console.WriteLine("          " + pr);
+            }
+        }
+
+        Console.WriteLine();
+        Console.WriteLine(string.Format("{0} models checked, {1} failed.", checkedModels, failures));
+        Console.WriteLine("Mapping and layout only. The wire protocol still needs real hardware.");
+        return failures == 0 ? 0 : 1;
+    }
+
     static int Main(string[] args)
     {
         var sw = new StreamWriter(Console.OpenStandardOutput());
@@ -195,6 +386,7 @@ class Program
         int seconds = 300;
         bool wake = false, connect = false, blink = false, clear = false, listen = true, init = false;
         bool imagetest = false, imagegrid = false, demo = false, listModels = false;
+        bool selfTest = false;
         string checkProfile = null, profilePath = null;
         int brightness = -1;
         int keepaliveMs = 0;
@@ -214,6 +406,7 @@ class Program
                 case "--imagegrid":  imagegrid = true; break;
                 case "--demo":       demo = true; break;
                 case "--models":     listModels = true; break;
+                case "--selftest":   selfTest = true; break;
                 case "--checkprofile": checkProfile = args[++i]; break;
                 case "--profile":    profilePath = args[++i]; break;
                 case "--no-listen":  listen = false; break;
@@ -222,6 +415,7 @@ class Program
         }
 
         if (listModels) return ListModels();
+        if (selfTest) return SelfTest();
         if (checkProfile != null) return CheckProfile(checkProfile);
         if (profilePath != null) return RunProfile(profilePath, seconds);
         if (demo) return RunDemo(seconds);

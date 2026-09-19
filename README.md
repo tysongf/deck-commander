@@ -204,9 +204,50 @@ onto a different deck remaps every key to the same row and column on the new gri
 Keys that fall outside the smaller grid are dropped. Profiles written before any of this
 existed carry no geometry and are assumed to be 3 x 5.
 
+## Virtual deck
+
+Press **Virtual deck** in Deck Commander to run the selected model on screen with no
+hardware attached. It is a real `IDeckDevice`, so it goes through the same
+`DeckController` as the metal: the same renderer paints it, page navigation works, and
+clicking a key raises exactly the events the hardware would.
+
+That makes three things possible without owning the device: building a profile for a
+deck you do not have, developing and demonstrating a host application before any deck is
+plugged in, and checking a model's key map and orientation, since an image that comes out
+sideways on screen would come out sideways on the panel.
+
+The window applies `DeckImage.InverseOrientation` before display, so it undoes the
+pre-rotation exactly as the physical panel does rather than being handed an upright copy.
+Brightness dims it. Keys with no switch under them are not clickable.
+
+```csharp
+using var deck = new VirtualDeck(DeckModel.Default);
+using var ctrl = new DeckController(deck);
+ctrl.ActionTriggered += (s, e) => Console.WriteLine(e.EventName);
+ctrl.Start();
+ctrl.Profile = ProfileStore.Load("profiles/il2-korea.json", deck.Model);
+
+deck.Press(0);                       // as if someone pressed the top-left key
+var art = deck.GetKeyBitmap(0);      // what that key is showing
+```
+
+## Adding another kind of device
+
+`IDeckDevice` is the seam. `DeckController`, the renderer and the profile format know
+nothing about USB; they only know that something has a `DeckModel`, accepts JPEGs by grid
+index, and raises key events. `AjazzStreamDock` and `VirtualDeck` are the two
+implementations.
+
+An Elgato Stream Deck belongs here as a third one. It speaks a different wire protocol
+(1024-byte image reports, key states delivered as a full bitmap rather than a single key
+number) but the same shape of behaviour, and Elgato publish the HID protocol at
+<https://docs.elgato.com/streamdeck/hid/intro/>. Worth noting that those devices report
+press *and* release on every model, so long-press becomes possible, which protocol v1
+Ajazz hardware cannot do.
+
 ## Projects
 
-- `src/AjazzDeck` - hardware layer: device catalogue, HID transport, input, images
+- `src/AjazzDeck` - device catalogue, `IDeckDevice`, HID transport, virtual deck, images
 - `src/AjazzDeck.Core` - profiles, pages, key rendering, page navigation, action dispatch (no UI)
 - `src/DeckCommander` - WPF editor and page switcher
 - `src/DeckProbe` - diagnostic console app
@@ -284,12 +325,19 @@ navigation column never destroys keys.
 dotnet build src/DeckProbe/DeckProbe.csproj -c Release
 
 DeckProbe.exe --models                 # print the device catalogue
+DeckProbe.exe --selftest               # check every model without hardware
 DeckProbe.exe --init --seconds 300     # initialise, then log key presses
 DeckProbe.exe --init --imagegrid       # number every key, to check the key map
 DeckProbe.exe --init --imagetest       # push all 8 orientations, to find the right one
 DeckProbe.exe --init --blink           # brightness test, confirms the output path
 DeckProbe.exe --brightness 80 --no-listen
 ```
+
+`--selftest` runs all 45 models through a `VirtualDeck` and checks what can be checked
+without the hardware: that both key maps are one to one, that navigation never lands on a
+key with no switch, that every screen gets painted at the size the model claims, and that
+pressing a key raises the event the profile asked for. It exits non-zero on failure, so
+it belongs in a build script. It does not test the wire protocol; only real hardware can.
 
 The probe prints a `[reader alive] cycles=.. timeouts=.. lastErr=..` heartbeat, which
 distinguishes "device is silent" from "our reader is broken". It also lists
@@ -315,10 +363,13 @@ key input and mapping, image upload, and profile migration from the old 3 x 5 la
 Key images must be pre-rotated (`DeckModel.Orientation`, 270 degrees on the AKP153),
 and image slots use each family's own numbering, which `SetKeyImageJpeg` handles.
 
-Not verified: every device other than the AKP153E, and in particular the knob input
-decoding, the v3 state byte, encoder screens, and the 293 V3's split image/press
-numbering. All of it is transcribed from working implementations, none of it has been
-run against the metal.
+Verified without hardware, via `--selftest`: the key maps, layout rules, image sizes and
+event dispatch for all 45 models.
+
+Not verified: the wire protocol of every device other than the AKP153E, and in particular
+the knob input decoding, the v3 state byte, encoder screens, the keepalive timing, and
+the 293 V3's split image/press numbering. All of it is transcribed from working
+implementations, none of it has been run against the metal.
 
 Not yet done: binding actions to anything real. `DeckActionType` currently has only
 `Event`, which raises `ActionTriggered` for a host application to handle.

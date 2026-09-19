@@ -19,6 +19,8 @@
           <Button Content="Save As..." Click="SaveAs_Click"/>
           <Rectangle Width="1" Fill="{StaticResource Line}" Margin="8,2"/>
           <Button x:Name="ConnectBtn" Content="Connect deck" Click="Connect_Click"/>
+          <Button x:Name="VirtualBtn" Content="Virtual deck" Click="Virtual_Click"
+                  ToolTip="Run the selected deck on screen, with no hardware attached."/>
           <Rectangle Width="1" Fill="{StaticResource Line}" Margin="8,2"/>
           <TextBlock Text="Deck" VerticalAlignment="Center" Margin="0,0,8,0"
                      FontSize="14" Foreground="{StaticResource FgDim}"/>

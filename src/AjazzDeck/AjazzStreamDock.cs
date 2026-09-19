@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -69,7 +69,7 @@ namespace AjazzDeck
     /// an ASCII "CRT" header. Geometry, image format and key numbering all come from the
     /// matched <see cref="DeckModel"/>, so one class serves every device in the catalogue.
     /// </summary>
-    public sealed class AjazzStreamDock : IDisposable
+    public sealed class AjazzStreamDock : IDeckDevice
     {
         /// <summary>Ajazz's own USB vendor id. Rebadged decks use their own, see DeckModel.</summary>
         public const ushort AjazzVendorId = 0x0300;
@@ -90,6 +90,9 @@ namespace AjazzDeck
 
         public DeckInfo Info { get; private set; }
         public DeckModel Model { get; private set; }
+
+        /// <summary>One line naming the device, for a status bar.</summary>
+        public string Description { get { return Info == null ? Model.Name : Info.ToString(); } }
 
         /// <summary>Read-loop diagnostics.</summary>
         public long ReadCycles { get; private set; }
