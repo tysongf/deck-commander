@@ -204,6 +204,11 @@ namespace AjazzDeck.Core
             if (grid == _layout.PageDownKey)
                 return r.RenderArrow(false, _selectorOffset + _layout.ActionKeyCount(true) < total);
 
+            // A display-only key is showing status, not page content. Leave it alone while
+            // the selector is open rather than blanking it for no reason.
+            if (!_layout.IsPressable(grid))
+                return RenderNormalKey(_layout, _profile, _pageIndex, grid);
+
             var grids = _layout.ActionGrids(true);
             int slot = Array.IndexOf(grids, grid);
             if (slot < 0) return r.RenderEmpty();

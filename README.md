@@ -38,7 +38,7 @@ Adding a device that is already in one of the families is one line in `DeckModel
 | HID usage | page `0xFFA0`, usage `0x0001` (vendor-defined) |
 | Driver | Microsoft `HidUsb` (generic) |
 | Report size | 513 bytes in and out (1 report-ID byte + 512 payload) |
-| Layout | 3 rows x 6 keys; the sixth column is a narrow strip, easy to mistake for bezel |
+| Layout | 3 rows x 6 screens, but only 15 switches: the narrow sixth column displays and does not press |
 | Protocol | Mirabox/Ajazz "Stream Dock" v1, ASCII `CRT` header |
 
 The dock also enumerates a separate USB Mass Storage device for its internal image
@@ -106,8 +106,20 @@ thread with `Invoke` / `Dispatcher.Invoke` before touching controls.
 
 Write code against `deck.Model` rather than against constants. Nothing about the grid
 is universal across the family: `Rows`, `Columns`, `DisplayKeys`, `EncoderCount`,
-`KeyPixels(grid)` and `Orientation` all vary, and `HasScreen(grid)` is false for the
-AKP03's three plain buttons.
+`KeyPixels(grid)` and `Orientation` all vary.
+
+Two separate questions get asked about a slot, and the answer is not the same one:
+
+- `HasScreen(grid)` is false for the AKP03's three plain buttons. They press, but
+  nothing can be drawn on them.
+- `IsPressable(grid)` is false for the AKP153's narrow sixth column. Those three draw,
+  but nothing happens when you touch them.
+
+The second case is worth designing for rather than around. Three always-visible tiles
+that no one can press by accident are a good place for status: mission phase, a clock,
+connection state. Give them a label and a colour like any other key and leave the action
+as `None`; page navigation skips them automatically and the page selector leaves them
+showing while it is open.
 
 ## Key numbering
 
@@ -358,7 +370,13 @@ in the catalogue is attached, which is how an unlisted model gets investigated.
 ## Status
 
 Verified on AKP153E hardware: enumeration, model matching, init, brightness, clear,
-key input and mapping, image upload, and profile migration from the old 3 x 5 layout.
+key input and mapping, image upload to all 18 screens, and profile migration from the
+old 3 x 5 layout.
+
+The 3 x 6 geometry is confirmed on the metal. All eighteen screens accept and display an
+image, and the three in the sixth column have no switches behind them, so the deck is
+eighteen displays and fifteen keys. That is why `HasScreen` and `IsPressable` are
+separate: on this hardware they genuinely disagree.
 
 Key images must be pre-rotated (`DeckModel.Orientation`, 270 degrees on the AKP153),
 and image slots use each family's own numbering, which `SetKeyImageJpeg` handles.
