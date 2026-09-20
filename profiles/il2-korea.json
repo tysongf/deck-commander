@@ -1,14 +1,17 @@
 {
   "Name": "IL-2 Korea",
   "Brightness": 65,
+  "Model": "0300:1010",
+  "Rows": 3,
+  "Columns": 6,
   "ReservePageColumn": true,
   "Pages": [
     {
       "Name": "Engine Start",
       "Keys": [
         {
-          "Label": "Master\nPower",
-          "ImagePath": null,
+          "Label": "Power",
+          "ImagePath": "",
           "Background": "#1E4C86",
           "Glyph": "Power",
           "ActionType": "Event",
@@ -41,6 +44,15 @@
           "ActionType": "Event",
           "EventName": "Engine.Starter",
           "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         },
         {
           "Label": "",
@@ -97,6 +109,15 @@
           "IsEmpty": true
         },
         {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
           "Label": "Chocks",
           "ImagePath": null,
           "Background": "#4A5160",
@@ -124,8 +145,8 @@
           "IsEmpty": false
         },
         {
-          "Label": "Shut\nDown",
-          "ImagePath": null,
+          "Label": "Shutdown",
+          "ImagePath": "",
           "Background": "#7A2020",
           "Glyph": "Stop",
           "ActionType": "Event",
@@ -140,8 +161,18 @@
           "ActionType": "None",
           "EventName": "",
           "IsEmpty": true
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         }
-      ]
+      ],
+      "Encoders": []
     },
     {
       "Name": "Taxi \u002B Takeoff",
@@ -181,6 +212,15 @@
           "ActionType": "Event",
           "EventName": "Controls.GearToggle",
           "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         },
         {
           "Label": "",
@@ -237,6 +277,15 @@
           "IsEmpty": true
         },
         {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
           "Label": "Tailwheel\nLock",
           "ImagePath": null,
           "Background": "#4A5160",
@@ -280,8 +329,18 @@
           "ActionType": "None",
           "EventName": "",
           "IsEmpty": true
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         }
-      ]
+      ],
+      "Encoders": []
     },
     {
       "Name": "Navigation",
@@ -321,6 +380,15 @@
           "ActionType": "Event",
           "EventName": "Nav.Autopilot",
           "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         },
         {
           "Label": "",
@@ -377,6 +445,15 @@
           "IsEmpty": true
         },
         {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
           "Label": "Radio",
           "ImagePath": null,
           "Background": "#3F4CA8",
@@ -420,8 +497,18 @@
           "ActionType": "None",
           "EventName": "",
           "IsEmpty": true
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         }
-      ]
+      ],
+      "Encoders": []
     },
     {
       "Name": "Combat",
@@ -461,6 +548,15 @@
           "ActionType": "Event",
           "EventName": "Weapons.Bombs",
           "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         },
         {
           "Label": "",
@@ -517,6 +613,15 @@
           "IsEmpty": true
         },
         {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
           "Label": "Drop\nTanks",
           "ImagePath": null,
           "Background": "#4A5160",
@@ -560,8 +665,18 @@
           "ActionType": "None",
           "EventName": "",
           "IsEmpty": true
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         }
-      ]
+      ],
+      "Encoders": []
     },
     {
       "Name": "Landing",
@@ -601,6 +716,15 @@
           "ActionType": "Event",
           "EventName": "Controls.Hook",
           "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         },
         {
           "Label": "",
@@ -657,6 +781,15 @@
           "IsEmpty": true
         },
         {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
           "Label": "Brakes",
           "ImagePath": null,
           "Background": "#B5661F",
@@ -700,8 +833,18 @@
           "ActionType": "None",
           "EventName": "",
           "IsEmpty": true
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         }
-      ]
+      ],
+      "Encoders": []
     },
     {
       "Name": "Views",
@@ -741,6 +884,15 @@
           "ActionType": "Event",
           "EventName": "View.FreeLook",
           "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         },
         {
           "Label": "",
@@ -797,6 +949,15 @@
           "IsEmpty": true
         },
         {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
           "Label": "Zoom\nIn",
           "ImagePath": null,
           "Background": "#4A5160",
@@ -840,8 +1001,18 @@
           "ActionType": "None",
           "EventName": "",
           "IsEmpty": true
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         }
-      ]
+      ],
+      "Encoders": []
     },
     {
       "Name": "Mission Control",
@@ -881,6 +1052,15 @@
           "ActionType": "Event",
           "EventName": "Mission.Stop",
           "IsEmpty": false
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         },
         {
           "Label": "",
@@ -937,6 +1117,15 @@
           "IsEmpty": true
         },
         {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
+        },
+        {
           "Label": "Weather",
           "ImagePath": null,
           "Background": "#3F4CA8",
@@ -980,8 +1169,18 @@
           "ActionType": "None",
           "EventName": "",
           "IsEmpty": true
+        },
+        {
+          "Label": "",
+          "ImagePath": null,
+          "Background": "#2A2E37",
+          "Glyph": "None",
+          "ActionType": "None",
+          "EventName": "",
+          "IsEmpty": true
         }
-      ]
+      ],
+      "Encoders": []
     }
   ]
 }
