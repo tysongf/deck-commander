@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 
-namespace AjazzDeck
+namespace DeckCommander.Devices
 {
     /// <summary>What a single input report described.</summary>
     public enum DeckInputKind

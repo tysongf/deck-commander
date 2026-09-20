@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 
-namespace AjazzDeck
+namespace DeckCommander.Devices
 {
     /// <summary>
     /// Encodes key art the way the panel expects it. Size and pre-rotation vary by model:

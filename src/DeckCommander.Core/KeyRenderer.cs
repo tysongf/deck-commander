@@ -1,10 +1,11 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.IO;
+using DeckCommander.Devices;
 
-namespace AjazzDeck.Core
+namespace DeckCommander.Core
 {
     /// <summary>
     /// Draws the tiles that get pushed to the deck. Sizes run from 60px on the knob decks

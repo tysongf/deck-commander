@@ -1,6 +1,6 @@
-﻿# AjazzDeck
+﻿# Deck Commander
 
-C# driver for the **Ajazz / Mirabox "Stream Dock" family** of macro pads, written for
+C# driver and editor for the **Ajazz / Mirabox "Stream Dock" family** of macro pads, written for
 driving events in an IL-2 mission-execution tool.
 
 No vendor SDK, no NuGet packages, no driver install. It talks to the stock Microsoft
@@ -14,7 +14,7 @@ Nothing else. No driver to install, and the one NuGet package restores itself.
 ```
 git clone <this repo>
 cd ajazz-deck
-dotnet build AjazzDeck.sln -c Release
+dotnet build DeckCommander.sln -c Release
 ```
 
 That builds all four projects. Check it works with no hardware at all:
@@ -39,7 +39,7 @@ src\DeckCommander\bin\Release\net8.0-windows\DeckCommander.exe
 
 ### Drive a deck from your own code
 
-Reference `src/AjazzDeck.Core`, which has no UI dependency, and handle one event:
+Reference `src/DeckCommander.Core`, which has no UI dependency, and handle one event:
 
 ```csharp
 using var deck = AjazzStreamDock.OpenFirst();       // or: new VirtualDeck(DeckModel.Default)
@@ -57,7 +57,7 @@ everything above still works with no deck attached.
 
 ### Visual Studio
 
-Open `AjazzDeck.sln`. Set **DeckCommander** as the startup project.
+Open `DeckCommander.sln`. Set **DeckCommander** as the startup project.
 
 ### If nothing happens when you press a key
 
@@ -121,7 +121,7 @@ This cost several hours to find, so do not remove it.
 ## Usage
 
 ```csharp
-using AjazzDeck;
+using DeckCommander.Devices;
 
 using var deck = AjazzStreamDock.OpenFirst();
 
@@ -318,13 +318,13 @@ Ajazz hardware cannot do.
 
 ## Projects
 
-- `src/AjazzDeck` - device catalogue, `IDeckDevice`, HID transport, virtual deck, images
-- `src/AjazzDeck.Core` - profiles, pages, key rendering, page navigation, action dispatch (no UI)
+- `src/DeckCommander.Devices` - device catalogue, `IDeckDevice`, HID transport, virtual deck, images
+- `src/DeckCommander.Core` - profiles, pages, key rendering, page navigation, action dispatch (no UI)
 - `src/DeckCommander` - WPF editor and page switcher
 - `src/DeckProbe` - diagnostic console app
 
-`AjazzDeck.Core` has no UI dependency, so the runtime that drives the deck during a
-mission does not need the editor. A host application should reference `AjazzDeck.Core`
+`DeckCommander.Core` has no UI dependency, so the runtime that drives the deck during a
+mission does not need the editor. A host application should reference `DeckCommander.Core`
 and handle `DeckController.ActionTriggered` (and `EncoderTriggered` on a knob deck).
 
 ## Deck Commander

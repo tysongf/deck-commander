@@ -1,8 +1,8 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.IO;
 
-namespace AjazzDeck
+namespace DeckCommander.Devices
 {
     /// <summary>
     /// A deck with no hardware behind it. It accepts exactly what the real transport

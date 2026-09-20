@@ -3,10 +3,10 @@
     <TargetFramework>net8.0-windows</TargetFramework>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
-    <RootNamespace>AjazzDeck.Core</RootNamespace>
-    <AssemblyName>AjazzDeck.Core</AssemblyName>
+    <RootNamespace>DeckCommander.Core</RootNamespace>
+    <AssemblyName>DeckCommander.Core</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AjazzDeck\AjazzDeck.csproj" />
+    <ProjectReference Include="..\DeckCommander.Devices\DeckCommander.Devices.csproj" />
   </ItemGroup>
 </Project>

@@ -1,10 +1,11 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using DeckCommander.Devices;
 
-namespace AjazzDeck.Core
+namespace DeckCommander.Core
 {
     /// <summary>Crude built-in placeholder art, so a key can be recognisable without an image file.</summary>
     public enum KeyGlyph
@@ -256,7 +257,7 @@ namespace AjazzDeck.Core
             {
                 return Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                    "AjazzDeck", "profile.json");
+                    "DeckCommander", "profile.json");
             }
         }
     }

@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Drawing;
 using System.Linq;
+using DeckCommander.Devices;
 
-namespace AjazzDeck.Core
+namespace DeckCommander.Core
 {
     public sealed class DeckActionEventArgs : EventArgs
     {

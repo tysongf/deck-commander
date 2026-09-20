@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 
-namespace AjazzDeck
+namespace DeckCommander.Devices
 {
     /// <summary>
-    /// Everything <see cref="AjazzDeck.Core.DeckController"/> needs from a deck. Implemented
+    /// Everything <see cref="DeckCommander.Core.DeckController"/> needs from a deck. Implemented
     /// by <see cref="AjazzStreamDock"/> for real hardware and by <see cref="VirtualDeck"/>
     /// for an on-screen one, so the controller, the renderer and the profile format do not
     /// know or care which is in front of them.

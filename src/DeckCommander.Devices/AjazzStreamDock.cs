@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 
-namespace AjazzDeck
+namespace DeckCommander.Devices
 {
     public sealed class DeckInfo
     {
@@ -393,7 +393,7 @@ namespace AjazzDeck
             if (_keepAliveRunning) return;
             _keepAliveRunning = true;
             _keepAlive = new Thread(KeepAliveLoop)
-            { IsBackground = true, Name = "AjazzDeckKeepAlive" };
+            { IsBackground = true, Name = "DeckCommander.DevicesKeepAlive" };
             _keepAlive.Start();
         }
 
@@ -416,7 +416,7 @@ namespace AjazzDeck
         {
             if (_running) return;
             _running = true;
-            _reader = new Thread(ReadLoop) { IsBackground = true, Name = "AjazzDeckReader" };
+            _reader = new Thread(ReadLoop) { IsBackground = true, Name = "DeckCommander.DevicesReader" };
             _reader.Start();
         }
 

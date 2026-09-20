@@ -3,8 +3,8 @@ using System.IO;
 using System.Text;
 using System.Threading;
 using System.Drawing;
-using AjazzDeck;
-using AjazzDeck.Core;
+using DeckCommander.Devices;
+using DeckCommander.Core;
 
 class Program
 {

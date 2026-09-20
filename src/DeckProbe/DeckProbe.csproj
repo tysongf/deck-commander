@@ -7,8 +7,8 @@
     <AssemblyName>DeckProbe</AssemblyName>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\AjazzDeck\AjazzDeck.csproj" />
-    <ProjectReference Include="..\AjazzDeck.Core\AjazzDeck.Core.csproj" />
+    <ProjectReference Include="..\DeckCommander.Devices\DeckCommander.Devices.csproj" />
+    <ProjectReference Include="..\DeckCommander.Core\DeckCommander.Core.csproj" />
   </ItemGroup>
 </Project>
 

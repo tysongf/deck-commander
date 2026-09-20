@@ -1,7 +1,8 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
+using DeckCommander.Devices;
 
-namespace AjazzDeck.Core
+namespace DeckCommander.Core
 {
     /// <summary>
     /// Where things sit on a particular deck. The rightmost column can optionally be

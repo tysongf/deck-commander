@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace AjazzDeck
+namespace DeckCommander.Devices
 {
     internal static class Native
     {
