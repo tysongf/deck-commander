@@ -6,6 +6,65 @@ driving events in an IL-2 mission-execution tool.
 No vendor SDK, no NuGet packages, no driver install. It talks to the stock Microsoft
 `HidUsb` driver through `hid.dll` / `setupapi.dll` P/Invoke.
 
+## Quick start
+
+**Needs:** Windows, and the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
+Nothing else. No driver to install, and the one NuGet package restores itself.
+
+```
+git clone <this repo>
+cd ajazz-deck
+dotnet build AjazzDeck.sln -c Release
+```
+
+That builds all four projects. Check it works with no hardware at all:
+
+```
+src\DeckProbe\bin\Release\net8.0-windows\DeckProbe.exe --selftest
+```
+
+45 models should pass and it should exit 0.
+
+### Run the editor
+
+```
+src\DeckCommander\bin\Release\net8.0-windows\DeckCommander.exe
+```
+
+- **No deck?** Pick a model from the **Deck** dropdown and press **Virtual deck**. You
+  get a working deck on screen that fires the same events as the hardware.
+- **Deck plugged in?** Press **Connect deck**. It identifies the model itself and
+  overrides the dropdown. Edits push to the keys as you type.
+- **Open...** then `profiles/il2-korea.json` for a worked seven-page example.
+
+### Drive a deck from your own code
+
+Reference `src/AjazzDeck.Core`, which has no UI dependency, and handle one event:
+
+```csharp
+using var deck = AjazzStreamDock.OpenFirst();       // or: new VirtualDeck(DeckModel.Default)
+using var ctrl = new DeckController(deck);
+
+ctrl.ActionTriggered += (s, e) => mission.TriggerEvent(e.EventName);
+
+ctrl.Start();                                        // REQUIRED, see below
+ctrl.Profile = ProfileStore.Load("profiles/il2-korea.json", deck.Model);
+```
+
+`ActionTriggered` fires on the reader thread, so marshal with `Invoke` or
+`Dispatcher.Invoke` before touching UI. Swap `AjazzStreamDock` for `VirtualDeck` and
+everything above still works with no deck attached.
+
+### Visual Studio
+
+Open `AjazzDeck.sln`. Set **DeckCommander** as the startup project.
+
+### If nothing happens when you press a key
+
+The deck ships in standalone mode and stays silent until the host initialises it. That
+is what `Initialize()` and `DeckController.Start()` do. See
+[The one thing that matters](#the-one-thing-that-matters).
+
 ## Supported devices
 
 45 devices across four hardware families, all sharing one protocol. `DeckModel` holds
@@ -270,10 +329,6 @@ and handle `DeckController.ActionTriggered` (and `EncoderTriggered` on a knob de
 
 ## Deck Commander
 
-```
-dotnet build src/DeckCommander/DeckCommander.csproj -c Release
-```
-
 Left panel manages pages, the centre is a live preview of the deck, the right panel
 edits the selected key. The preview is rendered with the same code that paints the
 hardware, so it is genuinely what you get.
@@ -334,8 +389,6 @@ navigation column never destroys keys.
 ## DeckProbe
 
 ```
-dotnet build src/DeckProbe/DeckProbe.csproj -c Release
-
 DeckProbe.exe --models                 # print the device catalogue
 DeckProbe.exe --selftest               # check every model without hardware
 DeckProbe.exe --init --seconds 300     # initialise, then log key presses
