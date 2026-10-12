@@ -1,0 +1,12 @@
+<Project>
+  <!-- Applies to every project in the solution. The release workflow overrides
+       Version from the git tag, so a tagged build carries that number. -->
+  <PropertyGroup>
+    <Version>0.2.0</Version>
+    <Product>Deck Commander</Product>
+    <Authors>tysongf</Authors>
+    <Copyright>Copyright (c) 2026 tysongf</Copyright>
+    <RepositoryUrl>https://github.com/tysongf/deck-commander</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+</Project>

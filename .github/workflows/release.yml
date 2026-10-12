@@ -1,0 +1,101 @@
+name: release
+
+# Tag a commit to ship it:  git tag v0.2.0 && git push origin v0.2.0
+# Or run this workflow by hand and type the version.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build, without the leading v'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Work out the version
+        id: ver
+        shell: pwsh
+        run: |
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            $v = $env:GITHUB_REF_NAME -replace '^v', ''
+          } else {
+            $v = '${{ github.event.inputs.version }}'
+          }
+          if ($v -notmatch '^\d+\.\d+\.\d+') { throw "version '$v' is not n.n.n" }
+          "version=$v" | Out-File $env:GITHUB_OUTPUT -Append
+          "tag=v$v"    | Out-File $env:GITHUB_OUTPUT -Append
+          Write-Host "building $v"
+
+      # Nothing ships that cannot pass the self-test.
+      - name: Build and self-test
+        run: |
+          dotnet build DeckCommander.sln -c Release -p:Version=${{ steps.ver.outputs.version }}
+          .\src\DeckProbe\bin\Release\net8.0-windows\DeckProbe.exe --selftest
+          .\src\DeckProbe\bin\Release\net8.0-windows\DeckProbe.exe --checkprofile profiles\il2-korea.json
+
+      - name: Publish both layouts
+        shell: pwsh
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          foreach ($p in 'DeckCommander', 'DeckProbe') {
+            # Self-contained, one folder, so the two apps share one copy of the
+            # runtime. Single-file bundles would each carry their own and the
+            # download grows by about a third for no gain.
+            dotnet publish src/$p/$p.csproj -c Release -r win-x64 `
+              --self-contained true -p:PublishSingleFile=false `
+              -p:DebugType=none -p:Version=$v -o dist/self-contained
+            dotnet publish src/$p/$p.csproj -c Release -r win-x64 `
+              --self-contained false -p:PublishSingleFile=true `
+              -p:DebugType=none -p:Version=$v -o dist/framework-dependent
+          }
+          foreach ($d in 'self-contained', 'framework-dependent') {
+            Copy-Item README.md, LICENSE "dist/$d"
+            Copy-Item profiles "dist/$d/profiles" -Recurse
+          }
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          New-Item -ItemType Directory out | Out-Null
+          Compress-Archive -Path dist/self-contained/*      -DestinationPath "out/DeckCommander-v$v-win-x64.zip"
+          Compress-Archive -Path dist/framework-dependent/* -DestinationPath "out/DeckCommander-v$v-win-x64-needs-dotnet8.zip"
+          Get-ChildItem out/*.zip | ForEach-Object {
+            $h = (Get-FileHash $_ -Algorithm SHA256).Hash.ToLower()
+            "$h  $($_.Name)" | Out-File out/SHA256SUMS.txt -Append -Encoding ascii
+          }
+          Get-Content out/SHA256SUMS.txt
+          Get-ChildItem out | Format-Table Name, @{n='MB';e={[math]::Round($_.Length/1MB,1)}}
+
+      - name: Write the release notes
+        shell: pwsh
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          (Get-Content .github/release-notes.md -Raw) -replace '\{V\}', $v |
+            Out-File notes.md -Encoding utf8NoBOM
+          Get-Content notes.md
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create ${{ steps.ver.outputs.tag }}
+          out/DeckCommander-v${{ steps.ver.outputs.version }}-win-x64.zip
+          out/DeckCommander-v${{ steps.ver.outputs.version }}-win-x64-needs-dotnet8.zip
+          out/SHA256SUMS.txt
+          --title "Deck Commander ${{ steps.ver.outputs.tag }}"
+          --notes-file notes.md

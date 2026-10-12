@@ -6,10 +6,17 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/tysongf/deck-commander/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/tysongf/deck-commander?color=2E8B87"></a>
+  <a href="https://github.com/tysongf/deck-commander/actions/workflows/ci.yml"><img alt="Build" src="https://github.com/tysongf/deck-commander/actions/workflows/ci.yml/badge.svg"></a>
   <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8.0-512BD4">
   <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%2F%2011-0078D4">
   <img alt="45 devices in the catalogue" src="https://img.shields.io/badge/catalogue-45%20devices-2E8B87">
-  <img alt="One NuGet package" src="https://img.shields.io/badge/NuGet%20packages-1-lightgrey">
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-lightgrey"></a>
+</p>
+
+<p align="center">
+  <b><a href="https://github.com/tysongf/deck-commander/releases/latest">Download the latest release</a></b><br>
+  <sub>Unzip, run <code>DeckCommander.exe</code>. No installer, no driver, nothing to configure.</sub>
 </p>
 
 ![An Ajazz AKP153E macro pad lit up with the Navigation page of the IL-2 profile](docs/images/akp153e-hardware.jpg)
@@ -33,10 +40,19 @@ event names are yours to choose.
 
 ## Quick start
 
+Grab a build from [Releases](https://github.com/tysongf/deck-commander/releases/latest), unzip it
+anywhere, and run `DeckCommander.exe`. Two zips are published each release: one with the .NET runtime
+inside it, which needs nothing installed, and a small one that needs the
+[.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0). Neither one installs
+anything or touches a driver. Windows SmartScreen will say the publisher is unknown, because the
+binaries are not code signed; `SHA256SUMS.txt` is attached to every release.
+
+### Or build it yourself
+
 **Needs:** Windows, and the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). Nothing else.
 
 ```
-git clone <this repo>
+git clone https://github.com/tysongf/deck-commander.git
 cd deck-commander
 dotnet build DeckCommander.sln -c Release
 ```
@@ -303,6 +319,18 @@ hours to find, so do not remove it.
 > [References](#references). The geometry, protocol and key maps are faithful to those sources, but
 > nobody has plugged the other 44 in and watched what happened.
 
+**If you own one of the other 44, you can settle it in about two minutes:**
+
+```
+DeckProbe.exe --models                 # is it recognised at all?
+DeckProbe.exe --init --imagegrid       # do the keys read 1..n in reading order?
+DeckProbe.exe --init --seconds 60      # press every key, do the ==> lines walk the grid?
+```
+
+[Open an issue](https://github.com/tysongf/deck-commander/issues/new) with what you saw, working or
+broken. That is how the catalogue stops being a transcription. If it is broken, paste the output and
+say which model: the three commands above usually contain enough to fix it without owning the device.
+
 <details>
 <summary><b>The full brand list</b></summary>
 
@@ -514,3 +542,11 @@ AKP153E come from these projects:
 
 There is a longer account of the reverse-engineering in
 [`writeup/the-silent-deck.html`](writeup/the-silent-deck.html).
+
+## Licence
+
+[MIT](LICENSE). Do what you like with it.
+
+Ajazz, Mirabox and the other names in the catalogue are trademarks of their respective owners. This
+project is not affiliated with, endorsed by, or supported by any of them. It is a clean-room driver
+built from HID traffic and the open source work credited above.

@@ -1,0 +1,30 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build
+        run: dotnet build DeckCommander.sln -c Release
+
+      # Checks all 45 models through the virtual deck: key maps one to one,
+      # navigation never lands on a key with no switch, every screen painted at
+      # the size the model claims, presses raise the event the profile asked for.
+      - name: Self-test, 45 models, no hardware
+        run: .\src\DeckProbe\bin\Release\net8.0-windows\DeckProbe.exe --selftest
+
+      - name: Check the shipped profile loads
+        run: .\src\DeckProbe\bin\Release\net8.0-windows\DeckProbe.exe --checkprofile profiles\il2-korea.json
