@@ -208,6 +208,24 @@ Event names such as `Engine.Starter` and `Mission.Start` are a starting vocabula
 passed through `ActionTriggered`; the host application decides what each one does, so rename them to
 match whatever your application expects.
 
+### Designing for the panel, not the preview
+
+Three things the hardware knows that the preview does not. All of them were learned by putting a
+design on the metal and looking at it.
+
+**The bezel eats the edges.** The panel does not show the whole 85 x 85 image. A few pixels all the
+way round sit under the plastic, so a label pushed to the bottom of a tile gets its descenders
+trimmed on the device while sitting comfortably in the preview. Keep content inside a safe margin.
+
+**Dark backgrounds refuse to stay dark.** The keys are lit from behind, so a near-black tile reads as
+mid grey on the panel while the saturated colours come through accurately. On this hardware colour
+carries the information and brightness does not, which is worth knowing before building a palette out
+of dark neutrals.
+
+**Labels want to be shorter than you think.** On the Navigation page, "Prev Waypoint" and "Altimeter"
+became "Prev WP" and "ALT" within a minute of reaching the hardware. Fifteen keys at arm's length is
+a different reading task from fifteen tiles on a monitor.
+
 ## Drive a deck from your own code
 
 Reference `src/DeckCommander.Core`, which has no UI dependency, and handle one event:
@@ -302,6 +320,66 @@ DIS  ->  brightness 0  ->  clear all keys  ->  set brightness  ->  flush (STP)
 That is what `Initialize()` does, and it must be called before key events arrive. This cost several
 hours to find, so do not remove it.
 
+<details>
+<summary><b>How that sequence was found, and what else broke on the way</b></summary>
+
+<br>
+
+The device produced no input reports at all, and none of the protocol references explain why. Four
+observations turned that into the sequence above.
+
+**A hang proved the silence was real.** The first capture process would not exit. `CloseHandle`
+blocks while a synchronous HID read is pending, and a HID read completes only when a report arrives.
+The process could not exit, so no report had arrived. The silence belonged to the device, not to a
+parsing mistake.
+
+**A heartbeat separated "device silent" from "our reader is broken".**
+
+```
+[reader alive] cycles=40  timeouts=39  lastErr=0
+```
+
+Forty read cycles, thirty-nine clean timeouts, zero errors. The reader was armed and healthy. That
+line is why `DeckProbe` still prints it: until it existed, every failure had two explanations and
+choosing between them was intuition.
+
+**The write path already worked.** A brightness command sent three times, dark to bright, visibly
+blinked the panel. The device, the interface, the report framing and the 513-byte `CRT` packets were
+all correct while reads returned nothing whatsoever. That asymmetry is what identifies a state
+problem rather than a protocol problem.
+
+**A key switched off its own screen.** Pressing a key toggled the panel's own display, and pressing
+it again toggled it back. That is standalone firmware behaviour: no host had claimed the device, so
+it was running its own screen. The most valuable diagnostic in the whole exercise was a person
+looking at the hardware and describing what it did.
+
+`DIS` and `CONNECT`, the two verbs that read like a handshake, were both accepted and neither
+produced a single keypress. The answer was not in any protocol document. It was what a working
+implementation happened to do at connect time: set brightness, clear every key, flush. Three commands
+that all read as cosmetic. [4ndv/opendeck-akp153](https://github.com/4ndv/opendeck-akp153) is where
+that order was sitting in plain sight. Open source did not hand over the answer, since nobody's
+README says "the device stays mute until you clear the keys". It narrowed the search from the whole
+space of possible USB behaviour down to one file.
+
+The first report the device ever sent:
+
+```
+00 41 43 4B 00 00 4F 4B 00 00 0D
+   A  C  K        O  K        ^^ key 13, the top left
+```
+
+Other failures worth knowing about before you touch the transport:
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| Process hung on exit | `CloseHandle` blocks on a pending synchronous HID read | Overlapped I/O with a bounded wait |
+| Reports occasionally lost | A report arriving between the wait timeout and the cancel was discarded | Keep the result whenever the overlapped read returns data |
+| Device sent nothing at all | It stays in standalone mode until a host initialises it | Brightness, clear all keys, flush |
+| Images on the wrong keys | Image slots use hardware numbering, not reading order | Translate inside the image call |
+| RESERVED badges would not clear | The bound property raised no change notification | Implement it properly on the view model |
+
+</details>
+
 ## Supported devices
 
 45 devices across four hardware families, all sharing one protocol. `DeckModel` holds the catalogue;
@@ -382,6 +460,13 @@ row 0       0       1       2       3       4       5     (device 13 10  7  4  1
 row 1       6       7       8       9      10      11     (device 14 11  8  5  2 17)
 row 2      12      13      14      15      16      17     (device 15 12  9  6  3 18)
 ```
+
+That ordering was established by pressing all fifteen keys in reading order and writing down what the
+hardware reported: 13 10 7 4 1, then 14 11 8 5 2, then 15 12 9 6 3. Fill the rightmost column top to
+bottom, then step one column left. That happens to be traditional vertical CJK column order, the
+direction Chinese and Japanese text ran before horizontal left to right became the norm. Whether the
+firmware author had writing direction in mind or was simply following the key matrix is not knowable
+from out here, and it would not change the mapping either way.
 
 The Mirabox 293 V3 is the awkward one: images are addressed row-major from the bottom left, presses
 row-major from the top left. The middle row is identical either way, which is what makes the
@@ -472,7 +557,11 @@ unlisted model gets investigated.
    scrambled, the map needs its own entry: note which physical key shows which number and build the
    table from that.
 3. `--init --imagetest`. Whichever key shows an upright F with the white wedge in its top-left corner
-   names the correct `Orientation`.
+   names the correct `Orientation`. All eight orientations go out in one pass on purpose: testing
+   them serially means guess, photograph, correct, repeat, while one photograph of eight keys settles
+   it. On the AKP153E the winner was rotate 270 with no mirroring, and the same photograph exposed a
+   second bug for free, because the images had landed in the wrong columns. That is how the image
+   slots turned out to use hardware numbering rather than reading order.
 4. `--init --seconds 60` and press every key. The `==>` lines should walk the grid in order. Codes
    that do not decode print nothing, which means the input scheme is wrong.
 
@@ -540,8 +629,8 @@ AKP153E come from these projects:
 - [Uriziel01/Ajazz-AKP153-reverse-engineering](https://github.com/Uriziel01/Ajazz-AKP153-reverse-engineering) - original AKP153 protocol notes
 - [ZCube's gist](https://gist.github.com/ZCube/430fab6039899eaa0e18367f60d36b3c)
 
-There is a longer account of the reverse-engineering in
-[`writeup/the-silent-deck.html`](writeup/the-silent-deck.html).
+None of them target this use case and none are in C#. They were valuable as protocol references,
+which is exactly what open source is for.
 
 ## Licence
 
