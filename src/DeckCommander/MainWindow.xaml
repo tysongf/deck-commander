@@ -12,6 +12,19 @@
     <Border DockPanel.Dock="Top" Background="{StaticResource Panel}"
             BorderBrush="{StaticResource Line}" BorderThickness="0,0,0,1" Padding="10,8">
       <DockPanel>
+        <!-- Declared before the left stack: a DockPanel gives the LAST child the
+             remaining space, so brightness must claim its width first or the two overlap. -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
+          <TextBlock Text="Screen Brightness" VerticalAlignment="Center" Margin="0,0,12,0"
+                     FontSize="14" Foreground="{StaticResource FgDim}"/>
+          <Slider x:Name="BrightnessSlider" Width="170" Minimum="5" Maximum="100" Value="60"
+                  VerticalAlignment="Center" IsSnapToTickEnabled="True" TickFrequency="5"
+                  ValueChanged="Brightness_Changed"/>
+          <TextBlock x:Name="BrightnessText" Text="60" Width="38" TextAlignment="Right"
+                     FontSize="15" FontWeight="SemiBold"
+                     VerticalAlignment="Center" Margin="10,0,0,0"/>
+        </StackPanel>
+
         <StackPanel Orientation="Horizontal">
           <Button Content="New"     Click="New_Click"/>
           <Button Content="Open..." Click="Open_Click"/>
@@ -32,16 +45,6 @@
                     ToolTip="Off: every key is usable and pages are changed here instead."/>
         </StackPanel>
 
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" DockPanel.Dock="Right">
-          <TextBlock Text="Screen Brightness" VerticalAlignment="Center" Margin="0,0,12,0"
-                     FontSize="14" Foreground="{StaticResource FgDim}"/>
-          <Slider x:Name="BrightnessSlider" Width="170" Minimum="5" Maximum="100" Value="60"
-                  VerticalAlignment="Center" IsSnapToTickEnabled="True" TickFrequency="5"
-                  ValueChanged="Brightness_Changed"/>
-          <TextBlock x:Name="BrightnessText" Text="60" Width="38" TextAlignment="Right"
-                     FontSize="15" FontWeight="SemiBold"
-                     VerticalAlignment="Center" Margin="10,0,0,0"/>
-        </StackPanel>
       </DockPanel>
     </Border>
 
