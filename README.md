@@ -1,19 +1,43 @@
-﻿# Deck Commander
+<h1 align="center">Deck Commander</h1>
 
-C# driver and editor for the **Ajazz / Mirabox "Stream Dock" family** of macro pads, written for
-driving events in an IL-2 mission-execution tool.
+<p align="center">
+  <b>C# driver and editor for the Ajazz / Mirabox "Stream Dock" family of macro pads.</b><br>
+  No vendor SDK, no NuGet packages, no driver install, and no hardware required to start.
+</p>
 
-No vendor SDK, no NuGet packages, no driver install. It talks to the stock Microsoft
-`HidUsb` driver through `hid.dll` / `setupapi.dll` P/Invoke.
+<p align="center">
+  <img alt=".NET 8" src="https://img.shields.io/badge/.NET-8.0-512BD4">
+  <img alt="Windows" src="https://img.shields.io/badge/Windows-10%20%2F%2011-0078D4">
+  <img alt="45 devices in the catalogue" src="https://img.shields.io/badge/catalogue-45%20devices-2E8B87">
+  <img alt="One NuGet package" src="https://img.shields.io/badge/NuGet%20packages-1-lightgrey">
+</p>
+
+![An Ajazz AKP153E macro pad lit up with the Navigation page of the IL-2 profile](docs/images/akp153e-hardware.jpg)
+
+<p align="center">
+  <i>An AKP153E running the Navigation page of <code>profiles/il2-korea.json</code>. The pale strip on
+  the right is the sixth column: three screens with no switches behind them. This photo is from v0.1,
+  before those three were painted.</i>
+</p>
+
+It talks to the stock Microsoft `HidUsb` driver through `hid.dll` / `setupapi.dll` P/Invoke, so there
+is nothing to install. It was written to drive events in an IL-2 mission-execution tool, and the
+event names are yours to choose.
+
+| | |
+| --- | --- |
+| **Works with no deck attached** | The virtual deck is a real device implementation. Build and test a profile for hardware you do not own. |
+| **45 devices in the catalogue** | Four hardware families, one protocol, one line of code to add a sibling. |
+| **Almost no dependencies** | One NuGet package, which restores itself. Everything else is P/Invoke. |
+| **Profiles move between decks** | A 3 x 5 profile opened on a 3 x 6 deck keeps its layout and gains a column. |
 
 ## Quick start
 
-**Needs:** Windows, and the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0).
-Nothing else. No driver to install, and the one NuGet package restores itself.
+**Needs:** Windows, and the [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0). Nothing else.
 
 ```
 git clone <this repo>
-cd ajazz-deck
+cd deck-commander
 dotnet build DeckCommander.sln -c Release
 ```
 
@@ -23,21 +47,152 @@ That builds all four projects. Check it works with no hardware at all:
 src\DeckProbe\bin\Release\net8.0-windows\DeckProbe.exe --selftest
 ```
 
-45 models should pass and it should exit 0.
-
-### Run the editor
+45 models should pass and it should exit 0. Then start the editor:
 
 ```
 src\DeckCommander\bin\Release\net8.0-windows\DeckCommander.exe
 ```
 
-- **No deck?** Pick a model from the **Deck** dropdown and press **Virtual deck**. You
-  get a working deck on screen that fires the same events as the hardware.
-- **Deck plugged in?** Press **Connect deck**. It identifies the model itself and
-  overrides the dropdown. Edits push to the keys as you type.
+- **No deck?** Pick a model from the **Deck** dropdown and press **Virtual deck**. You get a working
+  deck on screen that fires the same events as the hardware.
+- **Deck plugged in?** Press **Connect deck**. It identifies the model itself and overrides the
+  dropdown. Edits push to the keys as you type.
 - **Open...** then `profiles/il2-korea.json` for a worked seven-page example.
 
-### Drive a deck from your own code
+In Visual Studio: open `DeckCommander.sln` and set **DeckCommander** as the startup project.
+
+> **Nothing happens when you press a key?** The deck ships in standalone mode and stays silent until
+> the host initialises it. That is what `Initialize()` and `DeckController.Start()` do, and it is the
+> most surprising thing about this hardware. See
+> [The one thing that matters](#the-one-thing-that-matters).
+
+## The editor
+
+![The Deck Commander editor with the IL-2 profile open on the Navigation page](docs/images/editor.png)
+
+Left panel manages pages, the centre is a live preview of the deck, the right panel edits the
+selected key. The preview is rendered with the same code that paints the hardware, so it is genuinely
+what you get.
+
+The **Deck** dropdown picks which device you are designing for, so a profile can be built without the
+hardware present. Connecting a deck overrides the choice: the thing that is actually plugged in wins.
+Knob decks get a strip of knobs under the grid, each with separate events for turn left, turn right
+and press.
+
+Press **Connect deck** to edit against real hardware: every change is pushed to the key immediately,
+changing page in the editor changes the page on the deck, and pressing a physical key selects it in
+the editor.
+
+Profiles are JSON (`ProfileStore`), written through a temp file so a crash cannot leave a
+half-written profile behind.
+
+## The virtual deck
+
+![The virtual deck window showing the Engine Start page on a simulated AKP153E](docs/images/virtual-deck.png)
+
+Press **Virtual deck** to run the selected model on screen with no hardware attached. It is a real
+`IDeckDevice`, so it goes through the same `DeckController` as the metal: the same renderer paints
+it, page navigation works, and clicking a key raises exactly the events the hardware would.
+
+That makes three things possible without owning the device:
+
+- building a profile for a deck you do not have
+- developing and demonstrating a host application before any deck is plugged in
+- checking a model's key map and orientation, since an image that comes out sideways on screen would
+  come out sideways on the panel
+
+The window applies `DeckImage.InverseOrientation` before display, so it undoes the pre-rotation
+exactly as the physical panel does rather than being handed an upright copy. Brightness dims it. Keys
+with no switch under them are not clickable.
+
+```csharp
+using var deck = new VirtualDeck(DeckModel.Default);
+using var ctrl = new DeckController(deck);
+ctrl.ActionTriggered += (s, e) => Console.WriteLine(e.EventName);
+ctrl.Start();
+ctrl.Profile = ProfileStore.Load("profiles/il2-korea.json", deck.Model);
+
+deck.Press(0);                       // as if someone pressed the top-left key
+var art = deck.GetKeyBitmap(0);      // what that key is showing
+```
+
+## Pages, on the deck itself
+
+![The page selector open on the deck, showing all seven pages as tiles with a red CANCEL](docs/images/page-selector.png)
+
+Page navigation is optional, controlled by `DeckProfile.ReservePageColumn` and the toolbar checkbox.
+
+**Off**: every key is an action key and pages are changed from Deck Commander.
+
+**On**: the rightmost column becomes page controls. On a 3 x 6 deck that leaves 15 action keys per
+page:
+
+| Key | Role |
+| --- | --- |
+| row 0, last col | page up |
+| middle row, last col | page indicator, "3 of 7" |
+| last row, last col | page down |
+
+Pressing the indicator opens the page selector shown above: the action keys become page tiles
+(current page highlighted) and page up/down scroll through them a screenful at a time. While the
+selector is open the indicator becomes a red CANCEL. Page up/down wrap around at the ends.
+
+A page always stores every key definition regardless of the setting, so toggling the navigation
+column never destroys keys.
+
+### Global hotkeys
+
+Deck Commander registers system-wide hotkeys, so they work while IL-2 has focus:
+
+| Hotkey | Action |
+| --- | --- |
+| `Ctrl+Alt+PageUp` | previous page |
+| `Ctrl+Alt+PageDown` | next page |
+
+These matter most with the navigation column switched off, where the deck itself has no page
+controls. Registration can fail if another application already owns the combination; the status bar
+says so when that happens.
+
+## One profile, different decks
+
+![The same profile on a simulated AKP05E Pro: a 2 x 5 grid with four knobs underneath](docs/images/knob-deck.png)
+
+The same IL-2 profile opened on an AKP05E Pro, a 2 x 5 deck with four knobs. A profile records the
+deck it was written for (`Model`, `Rows`, `Columns`). Loading it onto a different deck remaps every
+key to the same row and column on the new grid, so a 3 x 5 profile opened on a 3 x 6 deck keeps its
+layout and gains an empty sixth column. Keys that fall outside the smaller grid are dropped. Profiles
+written before any of this existed carry no geometry and are assumed to be 3 x 5.
+
+A two-row deck such as this one has nowhere to put the page indicator between the arrows, so it gets
+page up and page down only, and the selector is reachable from the app instead
+(`DeckLayout.HasPageIndicator`).
+
+## Profiles
+
+`profiles/il2-korea.json` is a worked flight-sim profile: 7 pages, 84 keys.
+
+| Page | Covers |
+| --- | --- |
+| Engine Start | master power, fuel pump, magnetos, starter, lights, chocks, shutdown |
+| Taxi + Takeoff | brakes, flaps, gear, throttle, prop pitch, mixture, trim |
+| Navigation | map, waypoints, autopilot, compass, radio, course hold |
+| Combat | guns, cannons, rockets, bombs, master arm, drop tanks, bail out |
+| Landing | gear down, landing flaps, airbrake, prop full, engine off |
+| Views | cockpit, external, padlock, look directions, zoom |
+| Mission Control | start, pause, stop, phase stepping, spawn, mark objective, debrief |
+
+Open it with **Open...** in Deck Commander, or run it headless:
+
+```
+DeckProbe.exe --profile profiles/il2-korea.json --seconds 300
+DeckProbe.exe --checkprofile profiles/il2-korea.json
+```
+
+Event names such as `Engine.Starter` and `Mission.Start` are a starting vocabulary. They are strings
+passed through `ActionTriggered`; the host application decides what each one does, so rename them to
+match whatever your application expects.
+
+## Drive a deck from your own code
 
 Reference `src/DeckCommander.Core`, which has no UI dependency, and handle one event:
 
@@ -51,74 +206,11 @@ ctrl.Start();                                        // REQUIRED, see below
 ctrl.Profile = ProfileStore.Load("profiles/il2-korea.json", deck.Model);
 ```
 
-`ActionTriggered` fires on the reader thread, so marshal with `Invoke` or
-`Dispatcher.Invoke` before touching UI. Swap `AjazzStreamDock` for `VirtualDeck` and
-everything above still works with no deck attached.
+`ActionTriggered` fires on the reader thread, so marshal with `Invoke` or `Dispatcher.Invoke` before
+touching UI. Swap `AjazzStreamDock` for `VirtualDeck` and everything above still works with no deck
+attached.
 
-### Visual Studio
-
-Open `DeckCommander.sln`. Set **DeckCommander** as the startup project.
-
-### If nothing happens when you press a key
-
-The deck ships in standalone mode and stays silent until the host initialises it. That
-is what `Initialize()` and `DeckController.Start()` do. See
-[The one thing that matters](#the-one-thing-that-matters).
-
-## Supported devices
-
-45 devices across four hardware families, all sharing one protocol. `DeckModel` holds
-the catalogue; `DeckProbe.exe --models` prints it.
-
-| Family | Grid | Knobs | Protocol | Key image |
-| --- | --- | --- | --- | --- |
-| AKP153 / HSV293S | 3 x 6 (18 keys) | none | v1 and v3 | 85px (v1), 95px with an 82px sixth column (v3) |
-| AKP03 / N3 | 3 x 3 (6 screens + 3 plain buttons) | 3 | v2 and v3 | 60px (v2), 64px (v3) |
-| AKP05 / N4 | 2 x 5 (10 keys) | 4, each with a 176x112 screen | v3 | 112px |
-| Mirabox 293 V3 | 3 x 5 (15 keys) | none | v3 | 112px |
-
-Ajazz-branded: AKP153, AKP153E, AKP153R (and both rev. 2 boards), AKP03, AKP03E,
-AKP03R (and rev. 2), AKP05, AKP05E, AKP05E Pro, AKP05CN Pro. The same boards are sold
-as Mirabox, Mars Gaming, VSDInside, Soomfon, Streonor, Redragon, TreasLin, Mad Dog,
-Risemode, TMICE, Womier and Monstargear, and all of those are in the catalogue too.
-
-> **Only the Ajazz AKP153E (`0300:1010`, protocol v1) has been verified against real
-> hardware.** Every other entry is transcribed from the reference implementations listed
-> under [References](#references). The geometry, protocol and key maps are faithful to
-> those sources, but nobody has plugged the other 44 in and watched what happened.
-
-Adding a device that is already in one of the families is one line in `DeckModel._all`.
-
-## Device facts (verified on the AKP153E)
-
-| Property | Value |
-| --- | --- |
-| USB | `VID_0300` / `PID_1010` |
-| HID usage | page `0xFFA0`, usage `0x0001` (vendor-defined) |
-| Driver | Microsoft `HidUsb` (generic) |
-| Report size | 513 bytes in and out (1 report-ID byte + 512 payload) |
-| Layout | 3 rows x 6 screens, but only 15 switches: the narrow sixth column displays and does not press |
-| Protocol | Mirabox/Ajazz "Stream Dock" v1, ASCII `CRT` header |
-
-The dock also enumerates a separate USB Mass Storage device for its internal image
-store. It is not needed for button input; ignore it.
-
-## The one thing that matters
-
-**The deck sends nothing until the host initialises it.**
-
-Straight after plugging in, the deck runs standalone: pressing a key toggles its own
-screen and no HID input reports are produced. Sending `DIS` (wake) or `CONNECT`
-(keepalive) alone does *not* change this. The activation sequence is:
-
-```
-DIS  ->  brightness 0  ->  clear all keys  ->  set brightness  ->  flush (STP)
-```
-
-That is what `Initialize()` does, and it must be called before key events arrive.
-This cost several hours to find, so do not remove it.
-
-## Usage
+To work below profiles and pages, at the device itself:
 
 ```csharp
 using DeckCommander.Devices;
@@ -160,35 +252,101 @@ deck.KeyChanged += (s, e) =>
 };
 ```
 
-`KeyChanged` is raised on the reader thread. In WinForms/WPF marshal to the UI
-thread with `Invoke` / `Dispatcher.Invoke` before touching controls.
+`KeyChanged` is raised on the reader thread. In WinForms/WPF marshal to the UI thread with `Invoke` /
+`Dispatcher.Invoke` before touching controls.
 
-Write code against `deck.Model` rather than against constants. Nothing about the grid
-is universal across the family: `Rows`, `Columns`, `DisplayKeys`, `EncoderCount`,
-`KeyPixels(grid)` and `Orientation` all vary.
+Write code against `deck.Model` rather than against constants. Nothing about the grid is universal
+across the family: `Rows`, `Columns`, `DisplayKeys`, `EncoderCount`, `KeyPixels(grid)` and
+`Orientation` all vary.
 
 Two separate questions get asked about a slot, and the answer is not the same one:
 
-- `HasScreen(grid)` is false for the AKP03's three plain buttons. They press, but
-  nothing can be drawn on them.
-- `IsPressable(grid)` is false for the AKP153's narrow sixth column. Those three draw,
-  but nothing happens when you touch them.
+- `HasScreen(grid)` is false for the AKP03's three plain buttons. They press, but nothing can be
+  drawn on them.
+- `IsPressable(grid)` is false for the AKP153's narrow sixth column. Those three draw, but nothing
+  happens when you touch them.
 
-The second case is worth designing for rather than around. Three always-visible tiles
-that no one can press by accident are a good place for status: mission phase, a clock,
-connection state. Give them a label and a colour like any other key and leave the action
-as `None`; page navigation skips them automatically and the page selector leaves them
-showing while it is open.
+The second case is worth designing for rather than around. Three always-visible tiles that no one can
+press by accident are a good place for status: mission phase, a clock, connection state. Give them a
+label and a colour like any other key and leave the action as `None`; page navigation skips them
+automatically and the page selector leaves them showing while it is open.
 
-## Key numbering
+## The one thing that matters
 
-Every family numbers its keys differently, and two of them number *images* differently
-from *presses*. `DeckModel` owns both mappings, so callers only ever use the row-major
-grid index.
+**The deck sends nothing until the host initialises it.**
 
-The AKP153 family numbers the main block column-major from the **right**, then appends
-the narrow sixth column at the end: device key 1 is row 0 column 4, device key 13 is
-the top-left, and device keys 16-18 are the sixth column top to bottom.
+Straight after plugging in, the deck runs standalone: pressing a key toggles its own screen and no
+HID input reports are produced. Sending `DIS` (wake) or `CONNECT` (keepalive) alone does *not* change
+this. The activation sequence is:
+
+```
+DIS  ->  brightness 0  ->  clear all keys  ->  set brightness  ->  flush (STP)
+```
+
+That is what `Initialize()` does, and it must be called before key events arrive. This cost several
+hours to find, so do not remove it.
+
+## Supported devices
+
+45 devices across four hardware families, all sharing one protocol. `DeckModel` holds the catalogue;
+`DeckProbe.exe --models` prints it.
+
+| Family | Grid | Knobs | Protocol | Key image |
+| --- | --- | --- | --- | --- |
+| AKP153 / HSV293S | 3 x 6 (18 keys) | none | v1 and v3 | 85px (v1), 95px with an 82px sixth column (v3) |
+| AKP03 / N3 | 3 x 3 (6 screens + 3 plain buttons) | 3 | v2 and v3 | 60px (v2), 64px (v3) |
+| AKP05 / N4 | 2 x 5 (10 keys) | 4, each with a 176x112 screen | v3 | 112px |
+| Mirabox 293 V3 | 3 x 5 (15 keys) | none | v3 | 112px |
+
+> **Only the Ajazz AKP153E (`0300:1010`, protocol v1) has been verified against real hardware.** Every
+> other entry is transcribed from the reference implementations listed under
+> [References](#references). The geometry, protocol and key maps are faithful to those sources, but
+> nobody has plugged the other 44 in and watched what happened.
+
+<details>
+<summary><b>The full brand list</b></summary>
+
+<br>
+
+Ajazz-branded: AKP153, AKP153E, AKP153R (and both rev. 2 boards), AKP03, AKP03E, AKP03R (and rev. 2),
+AKP05, AKP05E, AKP05E Pro, AKP05CN Pro. The same boards are sold as Mirabox, Mars Gaming, VSDInside,
+Soomfon, Streonor, Redragon, TreasLin, Mad Dog, Risemode, TMICE, Womier and Monstargear, and all of
+those are in the catalogue too.
+
+Adding a device that is already in one of the families is one line in `DeckModel._all`.
+
+</details>
+
+<details>
+<summary><b>Device facts, verified on the AKP153E</b></summary>
+
+<br>
+
+| Property | Value |
+| --- | --- |
+| USB | `VID_0300` / `PID_1010` |
+| HID usage | page `0xFFA0`, usage `0x0001` (vendor-defined) |
+| Driver | Microsoft `HidUsb` (generic) |
+| Report size | 513 bytes in and out (1 report-ID byte + 512 payload) |
+| Layout | 3 rows x 6 screens, but only 15 switches: the narrow sixth column displays and does not press |
+| Protocol | Mirabox/Ajazz "Stream Dock" v1, ASCII `CRT` header |
+
+The dock also enumerates a separate USB Mass Storage device for its internal image store. It is not
+needed for button input; ignore it.
+
+</details>
+
+<details>
+<summary><b>Key numbering, and why every family needs its own map</b></summary>
+
+<br>
+
+Every family numbers its keys differently, and two of them number *images* differently from
+*presses*. `DeckModel` owns both mappings, so callers only ever use the row-major grid index.
+
+The AKP153 family numbers the main block column-major from the **right**, then appends the narrow
+sixth column at the end: device key 1 is row 0 column 4, device key 13 is the top-left, and device
+keys 16-18 are the sixth column top to bottom.
 
 ```
          col 0   col 1   col 2   col 3   col 4   col 5
@@ -197,18 +355,23 @@ row 1       6       7       8       9      10      11     (device 14 11  8  5  2
 row 2      12      13      14      15      16      17     (device 15 12  9  6  3 18)
 ```
 
-The Mirabox 293 V3 is the awkward one: images are addressed row-major from the bottom
-left, presses row-major from the top left. The middle row is identical either way,
-which is what makes the asymmetry easy to miss.
+The Mirabox 293 V3 is the awkward one: images are addressed row-major from the bottom left, presses
+row-major from the top left. The middle row is identical either way, which is what makes the
+asymmetry easy to miss.
 
-Protocol v1 and v2 report a **single event per press** - there is no separate down/up,
-so `e.Pressed` is always true and long-press is impossible. Protocol v3 reports both,
-using payload byte 10 for the state; `StateOffset` is set from the model.
+Protocol v1 and v2 report a **single event per press**: there is no separate down/up, so `e.Pressed`
+is always true and long-press is impossible. Protocol v3 reports both, using payload byte 10 for the
+state; `StateOffset` is set from the model.
 
-## Wire format
+</details>
 
-Host to device, zero padded. Payload is 512 bytes on protocol v1 and 1024 on v2/v3,
-but the HID descriptor is authoritative and the driver uses whatever it reports.
+<details>
+<summary><b>Wire format</b></summary>
+
+<br>
+
+Host to device, zero padded. Payload is 512 bytes on protocol v1 and 1024 on v2/v3, but the HID
+descriptor is authoritative and the driver uses whatever it reports.
 
 ```
 byte 0      report id, always 0x00
@@ -236,157 +399,19 @@ Device to host, key press:
    A  C  K        O  K        ^^ input code
 ```
 
-Payload byte 9 (buffer index 10) is the input code. On the AKP153 and 293 V3 families
-that is the hardware key number; the knob decks pack keys, knob presses and knob
-rotation into the same byte, which `DeckModel.TryDecodeInput` unpacks.
+Payload byte 9 (buffer index 10) is the input code. On the AKP153 and 293 V3 families that is the
+hardware key number; the knob decks pack keys, knob presses and knob rotation into the same byte,
+which `DeckModel.TryDecodeInput` unpacks.
 
-Clearing every key needs an explicit `STP` on v2 and v3. The AKP03, AKP05 and 293 V3
-drop off the bus after roughly 35 seconds of silence, so `Initialize()` starts a
-keepalive thread for the models that need one.
+Clearing every key needs an explicit `STP` on v2 and v3. The AKP03, AKP05 and 293 V3 drop off the bus
+after roughly 35 seconds of silence, so `Initialize()` starts a keepalive thread for the models that
+need one.
 
-## Profiles
-
-`profiles/il2-korea.json` is a worked flight-sim profile: 7 pages, 84 keys.
-
-| Page | Covers |
-| --- | --- |
-| Engine Start | master power, fuel pump, magnetos, starter, lights, chocks, shutdown |
-| Taxi + Takeoff | brakes, flaps, gear, throttle, prop pitch, mixture, trim |
-| Navigation | map, waypoints, autopilot, compass, radio, course hold |
-| Combat | guns, cannons, rockets, bombs, master arm, drop tanks, bail out |
-| Landing | gear down, landing flaps, airbrake, prop full, engine off |
-| Views | cockpit, external, padlock, look directions, zoom |
-| Mission Control | start, pause, stop, phase stepping, spawn, mark objective, debrief |
-
-Open it with **Open...** in Deck Commander, or run it headless:
-
-```
-DeckProbe.exe --profile profiles/il2-korea.json --seconds 300
-DeckProbe.exe --checkprofile profiles/il2-korea.json
-```
-
-Event names such as `Engine.Starter` and `Mission.Start` are a starting vocabulary. They
-are strings passed through `ActionTriggered`; the host application decides what each one
-does, so rename them to match whatever your application expects.
-
-A profile records the deck it was written for (`Model`, `Rows`, `Columns`). Loading it
-onto a different deck remaps every key to the same row and column on the new grid, so a
-3 x 5 profile opened on a 3 x 6 deck keeps its layout and gains an empty sixth column.
-Keys that fall outside the smaller grid are dropped. Profiles written before any of this
-existed carry no geometry and are assumed to be 3 x 5.
-
-## Virtual deck
-
-Press **Virtual deck** in Deck Commander to run the selected model on screen with no
-hardware attached. It is a real `IDeckDevice`, so it goes through the same
-`DeckController` as the metal: the same renderer paints it, page navigation works, and
-clicking a key raises exactly the events the hardware would.
-
-That makes three things possible without owning the device: building a profile for a
-deck you do not have, developing and demonstrating a host application before any deck is
-plugged in, and checking a model's key map and orientation, since an image that comes out
-sideways on screen would come out sideways on the panel.
-
-The window applies `DeckImage.InverseOrientation` before display, so it undoes the
-pre-rotation exactly as the physical panel does rather than being handed an upright copy.
-Brightness dims it. Keys with no switch under them are not clickable.
-
-```csharp
-using var deck = new VirtualDeck(DeckModel.Default);
-using var ctrl = new DeckController(deck);
-ctrl.ActionTriggered += (s, e) => Console.WriteLine(e.EventName);
-ctrl.Start();
-ctrl.Profile = ProfileStore.Load("profiles/il2-korea.json", deck.Model);
-
-deck.Press(0);                       // as if someone pressed the top-left key
-var art = deck.GetKeyBitmap(0);      // what that key is showing
-```
-
-## Adding another kind of device
-
-`IDeckDevice` is the seam. `DeckController`, the renderer and the profile format know
-nothing about USB; they only know that something has a `DeckModel`, accepts JPEGs by grid
-index, and raises key events. `AjazzStreamDock` and `VirtualDeck` are the two
-implementations.
-
-An Elgato Stream Deck belongs here as a third one. It speaks a different wire protocol
-(1024-byte image reports, key states delivered as a full bitmap rather than a single key
-number) but the same shape of behaviour, and Elgato publish the HID protocol at
-<https://docs.elgato.com/streamdeck/hid/intro/>. Worth noting that those devices report
-press *and* release on every model, so long-press becomes possible, which protocol v1
-Ajazz hardware cannot do.
-
-## Projects
-
-- `src/DeckCommander.Devices` - device catalogue, `IDeckDevice`, HID transport, virtual deck, images
-- `src/DeckCommander.Core` - profiles, pages, key rendering, page navigation, action dispatch (no UI)
-- `src/DeckCommander` - WPF editor and page switcher
-- `src/DeckProbe` - diagnostic console app
-
-`DeckCommander.Core` has no UI dependency, so the runtime that drives the deck during a
-mission does not need the editor. A host application should reference `DeckCommander.Core`
-and handle `DeckController.ActionTriggered` (and `EncoderTriggered` on a knob deck).
-
-## Deck Commander
-
-Left panel manages pages, the centre is a live preview of the deck, the right panel
-edits the selected key. The preview is rendered with the same code that paints the
-hardware, so it is genuinely what you get.
-
-The **Deck** dropdown picks which device you are designing for, so a profile can be
-built without the hardware present. Connecting a deck overrides the choice: the thing
-that is actually plugged in wins. Knob decks get a strip of knobs under the grid, each
-with separate events for turn left, turn right and press.
-
-Press **Connect deck** to edit against real hardware: every change is pushed to the key
-immediately, changing page in the editor changes the page on the deck, and pressing a
-physical key selects it in the editor.
-
-Profiles are JSON (`ProfileStore`), written through a temp file so a crash cannot leave
-a half-written profile behind.
-
-## Page navigation
-
-Page navigation is optional, controlled by `DeckProfile.ReservePageColumn` and the
-toolbar checkbox in Deck Commander.
-
-**Off**: every key is an action key and pages are changed from Deck Commander.
-
-**On**: the rightmost column becomes page controls. On a 3 x 6 deck that leaves 15
-action keys per page:
-
-| Key | Role |
-| --- | --- |
-| row 0, last col | page up |
-| middle row, last col | page indicator, "3 of 7" |
-| last row, last col | page down |
-
-Pressing the indicator opens the page selector: the action keys become page tiles
-(current page highlighted) and page up/down scroll through them a screenful at a time.
-While the selector is open the indicator becomes a red CANCEL. Page up/down wrap around
-at the ends.
-
-A two-row deck such as the AKP05 has nowhere to put the indicator between the arrows, so
-it gets page up and page down only and the selector is reachable from the app instead
-(`DeckLayout.HasPageIndicator`).
-
-### Global hotkeys
-
-Deck Commander registers system-wide hotkeys, so they work while IL-2 has focus:
-
-| Hotkey | Action |
-| --- | --- |
-| `Ctrl+Alt+PageUp` | previous page |
-| `Ctrl+Alt+PageDown` | next page |
-
-These matter most with the navigation column switched off, where the deck itself has no
-page controls. Registration can fail if another application already owns the combination;
-the status bar says so when that happens.
-
-A page always stores every key definition regardless of the setting, so toggling the
-navigation column never destroys keys.
+</details>
 
 ## DeckProbe
+
+The diagnostic console app: everything the editor does to a deck, without the editor.
 
 ```
 DeckProbe.exe --models                 # print the device catalogue
@@ -398,62 +423,94 @@ DeckProbe.exe --init --blink           # brightness test, confirms the output pa
 DeckProbe.exe --brightness 80 --no-listen
 ```
 
-`--selftest` runs all 45 models through a `VirtualDeck` and checks what can be checked
-without the hardware: that both key maps are one to one, that navigation never lands on a
-key with no switch, that every screen gets painted at the size the model claims, and that
-pressing a key raises the event the profile asked for. It exits non-zero on failure, so
-it belongs in a build script. It does not test the wire protocol; only real hardware can.
+`--selftest` runs all 45 models through a `VirtualDeck` and checks what can be checked without the
+hardware: that both key maps are one to one, that navigation never lands on a key with no switch,
+that every screen gets painted at the size the model claims, and that pressing a key raises the event
+the profile asked for. It exits non-zero on failure, so it belongs in a build script. It does not
+test the wire protocol; only real hardware can.
 
-The probe prints a `[reader alive] cycles=.. timeouts=.. lastErr=..` heartbeat, which
-distinguishes "device is silent" from "our reader is broken". It also lists
-*unrecognised* vendor-defined HID interfaces and will open one as an AKP153E if nothing
-in the catalogue is attached, which is how an unlisted model gets investigated.
+The probe prints a `[reader alive] cycles=.. timeouts=.. lastErr=..` heartbeat, which distinguishes
+"device is silent" from "our reader is broken". It also lists *unrecognised* vendor-defined HID
+interfaces and will open one as an AKP153E if nothing in the catalogue is attached, which is how an
+unlisted model gets investigated.
 
-## Bringing up an untested model
+<details>
+<summary><b>Bringing up an untested model</b></summary>
+
+<br>
 
 1. `--models` to confirm whether it is in the catalogue.
-2. `--init --imagegrid`. If the keys read 1..n in reading order the key map is right.
-   If they are scrambled, the map needs its own entry: note which physical key shows
-   which number and build the table from that.
-3. `--init --imagetest`. Whichever key shows an upright F with the white wedge in its
-   top-left corner names the correct `Orientation`.
-4. `--init --seconds 60` and press every key. The `==>` lines should walk the grid in
-   order. Codes that do not decode print nothing, which means the input scheme is wrong.
+2. `--init --imagegrid`. If the keys read 1..n in reading order the key map is right. If they are
+   scrambled, the map needs its own entry: note which physical key shows which number and build the
+   table from that.
+3. `--init --imagetest`. Whichever key shows an upright F with the white wedge in its top-left corner
+   names the correct `Orientation`.
+4. `--init --seconds 60` and press every key. The `==>` lines should walk the grid in order. Codes
+   that do not decode print nothing, which means the input scheme is wrong.
+
+</details>
+
+## Project layout
+
+| Project | Holds |
+| --- | --- |
+| `src/DeckCommander.Devices` | device catalogue, `IDeckDevice`, HID transport, virtual deck, images |
+| `src/DeckCommander.Core` | profiles, pages, key rendering, page navigation, action dispatch (no UI) |
+| `src/DeckCommander` | WPF editor and page switcher |
+| `src/DeckProbe` | diagnostic console app |
+
+`DeckCommander.Core` has no UI dependency, so the runtime that drives the deck during a mission does
+not need the editor. A host application should reference `DeckCommander.Core` and handle
+`DeckController.ActionTriggered` (and `EncoderTriggered` on a knob deck).
+
+### Adding another kind of device
+
+`IDeckDevice` is the seam. `DeckController`, the renderer and the profile format know nothing about
+USB; they only know that something has a `DeckModel`, accepts JPEGs by grid index, and raises key
+events. `AjazzStreamDock` and `VirtualDeck` are the two implementations.
+
+An Elgato Stream Deck belongs here as a third one. It speaks a different wire protocol (1024-byte
+image reports, key states delivered as a full bitmap rather than a single key number) but the same
+shape of behaviour, and Elgato publish the HID protocol at
+<https://docs.elgato.com/streamdeck/hid/intro/>. Worth noting that those devices report press *and*
+release on every model, so long-press becomes possible, which protocol v1 Ajazz hardware cannot do.
 
 ## Status
 
-Verified on AKP153E hardware: enumeration, model matching, init, brightness, clear,
-key input and mapping, image upload to all 18 screens, and profile migration from the
-old 3 x 5 layout.
+**Verified on AKP153E hardware:** enumeration, model matching, init, brightness, clear, key input and
+mapping, image upload to all 18 screens, and profile migration from the old 3 x 5 layout.
 
-The 3 x 6 geometry is confirmed on the metal. All eighteen screens accept and display an
-image, and the three in the sixth column have no switches behind them, so the deck is
-eighteen displays and fifteen keys. That is why `HasScreen` and `IsPressable` are
-separate: on this hardware they genuinely disagree.
+The 3 x 6 geometry is confirmed on the metal. All eighteen screens accept and display an image, and
+the three in the sixth column have no switches behind them, so the deck is eighteen displays and
+fifteen keys. That is why `HasScreen` and `IsPressable` are separate: on this hardware they genuinely
+disagree.
 
-Key images must be pre-rotated (`DeckModel.Orientation`, 270 degrees on the AKP153),
-and image slots use each family's own numbering, which `SetKeyImageJpeg` handles.
+Key images must be pre-rotated (`DeckModel.Orientation`, 270 degrees on the AKP153), and image slots
+use each family's own numbering, which `SetKeyImageJpeg` handles.
 
-Verified without hardware, via `--selftest`: the key maps, layout rules, image sizes and
-event dispatch for all 45 models.
+**Verified without hardware,** via `--selftest`: the key maps, layout rules, image sizes and event
+dispatch for all 45 models.
 
-Not verified: the wire protocol of every device other than the AKP153E, and in particular
-the knob input decoding, the v3 state byte, encoder screens, the keepalive timing, and
-the 293 V3's split image/press numbering. All of it is transcribed from working
-implementations, none of it has been run against the metal.
+**Not verified:** the wire protocol of every device other than the AKP153E, and in particular the knob
+input decoding, the v3 state byte, encoder screens, the keepalive timing, and the 293 V3's split
+image/press numbering. All of it is transcribed from working implementations, none of it has been run
+against the metal.
 
-Not yet done: binding actions to anything real. `DeckActionType` currently has only
-`Event`, which raises `ActionTriggered` for a host application to handle.
+**Not yet done:** binding actions to anything real. `DeckActionType` currently has only `Event`, which
+raises `ActionTriggered` for a host application to handle.
 
 ## References
 
-The device tables, protocol versions, image formats and key maps for everything other
-than the AKP153E come from these projects:
+The device tables, protocol versions, image formats and key maps for everything other than the
+AKP153E come from these projects:
 
-- https://github.com/4ndv/mirajazz - the shared Rust library; protocol versions, packet sizes, command set
-- https://github.com/4ndv/opendeck-akp153 - AKP153 / HSV293S family, key maps, 3 x 6 grid
-- https://github.com/4ndv/opendeck-akp03 - AKP03 / N3 family, knob input codes
-- https://github.com/ambiso/opendeck-akp05 - AKP05 / N4 family, encoder screens
-- https://github.com/Grizbeard/opendeck-mirabox293v3 - 293 V3, split image/press numbering
-- https://github.com/Uriziel01/Ajazz-AKP153-reverse-engineering - original AKP153 protocol notes
-- https://gist.github.com/ZCube/430fab6039899eaa0e18367f60d36b3c
+- [4ndv/mirajazz](https://github.com/4ndv/mirajazz) - the shared Rust library; protocol versions, packet sizes, command set
+- [4ndv/opendeck-akp153](https://github.com/4ndv/opendeck-akp153) - AKP153 / HSV293S family, key maps, 3 x 6 grid
+- [4ndv/opendeck-akp03](https://github.com/4ndv/opendeck-akp03) - AKP03 / N3 family, knob input codes
+- [ambiso/opendeck-akp05](https://github.com/ambiso/opendeck-akp05) - AKP05 / N4 family, encoder screens
+- [Grizbeard/opendeck-mirabox293v3](https://github.com/Grizbeard/opendeck-mirabox293v3) - 293 V3, split image/press numbering
+- [Uriziel01/Ajazz-AKP153-reverse-engineering](https://github.com/Uriziel01/Ajazz-AKP153-reverse-engineering) - original AKP153 protocol notes
+- [ZCube's gist](https://gist.github.com/ZCube/430fab6039899eaa0e18367f60d36b3c)
+
+There is a longer account of the reverse-engineering in
+[`writeup/the-silent-deck.html`](writeup/the-silent-deck.html).
